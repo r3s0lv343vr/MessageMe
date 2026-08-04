@@ -1,0 +1,48 @@
+# Local Android configuration
+local.properties
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Signing credentials
+keystore.properties
+*.jks
+*.keystore
+
+# Firebase client config (do not commit unless owner approves)
+app/google-services.json
+
+# Firebase server credentials
+*service-account*.json
+firebase-adminsdk*.json
+
+# Build output
+.gradle/
+build/
+**/build/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Android Studio
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+.navigation/
+output.json
+*.hprof
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Kotlin
+.kotlin/

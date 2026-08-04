@@ -56,10 +56,11 @@ Even then you would watch the stream in **that** service’s website — not ins
 
 The folder `/web` is a simple watercolor landing page that explains the project and links to GitHub / the PR.
 
+**Live URL:** https://message-me-dusky.vercel.app/  
+**Vercel dashboard:** https://vercel.com/r3s0lv343vrs-projects/message-me
+
 ### Is Vercel linked to this agent?
-**No — not currently.** This environment has:
-- no Vercel MCP server
-- no `VERCEL_TOKEN` / CLI login
+A deploy token was used once to publish the display site. Prefer dashboard Git integration for future updates, and **revoke any token pasted into chat** at https://vercel.com/account/tokens.
 
 ### How to authorize the agent (pick one)
 

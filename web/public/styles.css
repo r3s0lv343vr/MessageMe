@@ -1,0 +1,236 @@
+:root {
+  --blue: #4a90c8;
+  --blue-deep: #2f6fa3;
+  --yellow: #f7e7a5;
+  --orange: #f4a261;
+  --ink: #1e2a32;
+  --foam: #fffdf8;
+  --sky: #eaf3fa;
+  --wash: #dce9f5;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Source Sans 3", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  color: var(--ink);
+  font-family: var(--font-body);
+  background: var(--sky);
+}
+
+.wash {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(247, 231, 165, 0.7), transparent 42%),
+    radial-gradient(circle at 82% 22%, rgba(74, 144, 200, 0.35), transparent 40%),
+    radial-gradient(circle at 55% 88%, rgba(244, 162, 97, 0.35), transparent 45%),
+    linear-gradient(180deg, var(--sky), var(--wash) 55%, #c9def0);
+  animation: drift 14s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  from {
+    transform: scale(1) translateY(0);
+  }
+  to {
+    transform: scale(1.03) translateY(-1.5%);
+  }
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 6vw;
+}
+
+.brand-mark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+nav a {
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.hero {
+  min-height: calc(100vh - 5.5rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2rem 6vw 4rem;
+  max-width: 48rem;
+  animation: rise 0.8s ease both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.brand {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 8vw, 4.8rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--blue-deep);
+}
+
+.hero h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+  font-weight: 600;
+  line-height: 1.2;
+  max-width: 18ch;
+}
+
+.lede {
+  margin: 1.1rem 0 0;
+  font-size: 1.15rem;
+  line-height: 1.55;
+  max-width: 36rem;
+  color: rgba(30, 42, 50, 0.88);
+}
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.2rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn.primary {
+  background: var(--blue);
+  color: var(--foam);
+  box-shadow: 0 10px 24px rgba(47, 111, 163, 0.28);
+}
+
+.btn.secondary {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.btn.ghost {
+  border: 1.5px solid rgba(30, 42, 50, 0.2);
+  padding: 0.45rem 0.9rem;
+}
+
+.panel {
+  margin: 0 6vw 2.5rem;
+  padding: 1.75rem;
+  max-width: 48rem;
+  background: rgba(255, 253, 248, 0.72);
+  border: 1px solid rgba(74, 144, 200, 0.22);
+  border-radius: 1.25rem;
+  animation: rise 0.9s ease both;
+  animation-delay: 0.1s;
+}
+
+.panel.accent {
+  background: rgba(247, 231, 165, 0.45);
+}
+
+.panel h2 {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+}
+
+.panel p,
+.panel li {
+  line-height: 1.55;
+}
+
+.features,
+.steps {
+  margin: 1rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.features li,
+.steps li {
+  margin: 0.45rem 0;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+  background: rgba(255, 253, 248, 0.9);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+}
+
+.note {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-left: 4px solid var(--orange);
+  background: rgba(255, 253, 248, 0.7);
+}
+
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.5rem 6vw 2.5rem;
+  color: rgba(30, 42, 50, 0.75);
+}
+
+footer a {
+  color: var(--blue-deep);
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  nav a:not(.btn) {
+    display: none;
+  }
+
+  .hero {
+    min-height: auto;
+    padding-top: 3rem;
+  }
+}

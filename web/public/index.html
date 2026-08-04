@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MessageMe — message yourself reminders</title>
+    <meta
+      name="description"
+      content="MessageMe is an Android app for messaging yourself task reminders with a chat UI, calendar, and offline-first scheduling."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="wash" aria-hidden="true"></div>
+
+    <header class="top">
+      <a class="brand-mark" href="/">MessageMe</a>
+      <nav>
+        <a href="#how">How it works</a>
+        <a href="#run">Run the app</a>
+        <a
+          class="btn ghost"
+          href="https://github.com/r3s0lv343vr/MessageMe"
+          target="_blank"
+          rel="noreferrer"
+          >GitHub</a
+        >
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="brand">MessageMe</p>
+        <h1>Message yourself. Remember what matters.</h1>
+        <p class="lede">
+          An Android reminder app that feels like a chat with you — schedule
+          tasks, get envelope-style notifications, and track them on a
+          colour-coded calendar. Works offline.
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="#run">View / run on Android</a>
+          <a
+            class="btn secondary"
+            href="https://github.com/r3s0lv343vr/MessageMe/pull/1"
+            target="_blank"
+            rel="noreferrer"
+            >Open pull request</a
+          >
+        </div>
+      </section>
+
+      <section id="how" class="panel">
+        <h2>What you’re looking at</h2>
+        <p>
+          This page is a <strong>project display</strong> for the MessageMe
+          Android app. The real product runs on an Android phone or emulator —
+          not inside this browser.
+        </p>
+        <ul class="features">
+          <li>Chat-style self reminders with title, date, and optional time</li>
+          <li>Default 3:00 AM local time when no time is chosen</li>
+          <li>Calendar todo view with orange / green / red / blue day colours</li>
+          <li>Envelope notifications — not alarm-clock alerts</li>
+          <li>Offline-first Room storage; optional Firebase sync later</li>
+        </ul>
+      </section>
+
+      <section id="run" class="panel accent">
+        <h2>How to view the real app</h2>
+        <ol class="steps">
+          <li>
+            Install
+            <a
+              href="https://developer.android.com/studio"
+              target="_blank"
+              rel="noreferrer"
+              >Android Studio</a
+            >
+            on your computer.
+          </li>
+          <li>
+            Clone or download the repo
+            <code>r3s0lv343vr/MessageMe</code>, branch
+            <code>feature/message-me-android-app</code>.
+          </li>
+          <li>In Android Studio: <strong>File → Open</strong> the repo folder.</li>
+          <li>Wait for Gradle sync to finish.</li>
+          <li>
+            Device Manager → create a <strong>Pixel</strong> phone with
+            <strong>API 36</strong> (or API 33) → Start it.
+          </li>
+          <li>Click the green <strong>Run</strong> button (app configuration).</li>
+        </ol>
+        <p class="note">
+          Firebase (<code>google-services.json</code>) is optional just to open
+          and try the app. Without it, everything works offline; cloud sync stays
+          off.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <span>MessageMe · Android · Unbound</span>
+      <a href="https://github.com/r3s0lv343vr/MessageMe">Source on GitHub</a>
+    </footer>
+
+    <script>
+      document.documentElement.classList.add("ready");
+    </script>
+  </body>
+</html>

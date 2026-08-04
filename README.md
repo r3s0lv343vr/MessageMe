@@ -10,8 +10,9 @@ Android app that lets you message yourself reminders for tasks. Offline-first wi
 
 - **Real app (Android):** open this repo in Android Studio → start a Pixel emulator → Run `app`.  
   Step-by-step: [`docs/HOW_TO_VIEW.md`](docs/HOW_TO_VIEW.md)
-- **Project display website (browser):** static site in [`web/`](web/) for Vercel.  
-  Deploy instructions + Vercel authorization: [`docs/HOW_TO_VIEW.md`](docs/HOW_TO_VIEW.md#3-vercel-project-display-page)
+- **Project display website (browser):** https://message-me-dusky.vercel.app/  
+  Source: [`web/`](web/) · Vercel project: [message-me](https://vercel.com/r3s0lv343vrs-projects/message-me)  
+  Deploy notes: [`docs/HOW_TO_VIEW.md`](docs/HOW_TO_VIEW.md#3-vercel-project-display-page)
 
 ---
 

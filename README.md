@@ -6,6 +6,13 @@ Android app that lets you message yourself reminders for tasks. Offline-first wi
 **Min SDK:** 24 · **Target / Compile SDK:** 36  
 **Language:** Kotlin · **UI:** Jetpack Compose · **DI:** Hilt
 
+## How to view this project
+
+- **Real app (Android):** open this repo in Android Studio → start a Pixel emulator → Run `app`.  
+  Step-by-step: [`docs/HOW_TO_VIEW.md`](docs/HOW_TO_VIEW.md)
+- **Project display website (browser):** static site in [`web/`](web/) for Vercel.  
+  Deploy instructions + Vercel authorization: [`docs/HOW_TO_VIEW.md`](docs/HOW_TO_VIEW.md#3-vercel-project-display-page)
+
 ---
 
 ## Better pathways (recommendations)

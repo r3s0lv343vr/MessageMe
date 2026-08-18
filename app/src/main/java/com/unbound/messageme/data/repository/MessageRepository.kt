@@ -15,7 +15,9 @@ import com.unbound.messageme.data.local.TaskEntity
 import com.unbound.messageme.data.local.TaskStatus
 import com.unbound.messageme.data.preferences.UserPreferences
 import com.unbound.messageme.data.sync.CloudSync
+import com.unbound.messageme.domain.NotificationDeliveryPolicy
 import com.unbound.messageme.domain.ReminderPlanner
+import com.unbound.messageme.domain.SyncConflictLogic
 import com.unbound.messageme.domain.TimeDefaults
 import com.unbound.messageme.notification.ReminderScheduler
 import kotlinx.coroutines.flow.Flow
@@ -336,7 +338,13 @@ class MessageRepository @Inject constructor(
         reminderDao.update(reminder.copy(delivered = true))
 
         val notificationsOn = preferences.internalNotificationsEnabled.first()
-        if (notificationsOn) {
+        if (
+            NotificationDeliveryPolicy.shouldShowSystemNotification(
+                internalNotificationsEnabled = notificationsOn,
+                taskDeleted = updatedTask.deleted,
+                status = updatedTask.status
+            )
+        ) {
             scheduler.notifyUser(updatedTask, content.body, reminder)
         }
     }
@@ -368,7 +376,7 @@ class MessageRepository @Inject constructor(
     private suspend fun mergeRemote(remote: List<TaskEntity>) {
         remote.forEach { remoteTask ->
             val local = taskDao.getById(remoteTask.id)
-            if (local == null || remoteTask.updatedAtEpochMillis >= local.updatedAtEpochMillis) {
+            if (SyncConflictLogic.shouldApplyRemote(local, remoteTask)) {
                 taskDao.upsert(remoteTask)
                 if (!remoteTask.deleted && remoteTask.status != TaskStatus.COMPLETED &&
                     remoteTask.status != TaskStatus.DISMISSED

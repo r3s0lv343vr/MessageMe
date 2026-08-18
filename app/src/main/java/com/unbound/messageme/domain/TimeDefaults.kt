@@ -24,9 +24,18 @@ object TimeDefaults {
     fun nowMillis(): Long = System.currentTimeMillis()
     fun minutesToMillis(minutes: Long): Long = TimeUnit.MINUTES.toMillis(minutes)
 
-    fun resolveDueAt(date: LocalDate, time: LocalTime?, zoneId: ZoneId = zoneId()): Pair<Long, Boolean> {
+    fun resolveDueAt(
+        date: LocalDate,
+        time: LocalTime?,
+        zoneId: ZoneId = zoneId(),
+        nowEpochMillis: Long = nowMillis()
+    ): Pair<Long, Boolean> {
         val chosen = time ?: LocalTime.of(DEFAULT_HOUR, DEFAULT_MINUTE)
-        val millis = LocalDateTime.of(date, chosen).atZone(zoneId).toInstant().toEpochMilli()
+        var millis = LocalDateTime.of(date, chosen).atZone(zoneId).toInstant().toEpochMilli()
+        // Unset time means 3:00 AM. If that instant already passed on the chosen day, use the next morning.
+        if (time == null && millis < nowEpochMillis - minutesToMillis(1)) {
+            millis = LocalDateTime.of(date.plusDays(1), chosen).atZone(zoneId).toInstant().toEpochMilli()
+        }
         return millis to (time != null)
     }
 

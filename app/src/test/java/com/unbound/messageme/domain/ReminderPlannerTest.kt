@@ -61,4 +61,23 @@ class ReminderPlannerTest {
         assertThat(planned.map { it.type }).contains(ReminderType.T_MINUS_5M)
         assertThat(planned.map { it.type }).doesNotContain(ReminderType.T_MINUS_3H)
     }
+
+    @Test
+    fun `unacked follow-ups are 30 then 90 then 180 minutes after due`() {
+        val due = LocalDate.of(2026, 8, 20)
+            .atTime(LocalTime.of(18, 0))
+            .atZone(zone)
+            .toInstant()
+            .toEpochMilli()
+        val now = due - TimeDefaults.minutesToMillis(24 * 60)
+        val planned = ReminderPlanner.planForTask("t1", due, timeWasExplicitlyChosen = true, nowEpochMillis = now)
+        val offsets = planned.filter {
+            it.type == ReminderType.UNACKED_1 ||
+                it.type == ReminderType.UNACKED_2 ||
+                it.type == ReminderType.UNACKED_3
+        }.associate { it.type to (it.triggerAtEpochMillis - due) / 60_000 }
+        assertThat(offsets[ReminderType.UNACKED_1]).isEqualTo(30L)
+        assertThat(offsets[ReminderType.UNACKED_2]).isEqualTo(90L)
+        assertThat(offsets[ReminderType.UNACKED_3]).isEqualTo(180L)
+    }
 }

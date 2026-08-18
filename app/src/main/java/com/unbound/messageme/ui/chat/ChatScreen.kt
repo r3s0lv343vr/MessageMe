@@ -60,6 +60,8 @@ import com.unbound.messageme.data.local.ChatMessageEntity
 import com.unbound.messageme.data.local.MessageKind
 import com.unbound.messageme.data.local.Priority
 import com.unbound.messageme.data.local.Recurrence
+import com.unbound.messageme.data.local.TaskEntity
+import com.unbound.messageme.data.local.TaskStatus
 import com.unbound.messageme.domain.AiScheduleSuggestions
 import com.unbound.messageme.domain.TimeDefaults
 import com.unbound.messageme.ui.components.WatercolorBackground
@@ -81,14 +83,21 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ChatScreen(
     messages: List<ChatMessageEntity>,
+    tasks: List<TaskEntity>,
+    editingTask: TaskEntity?,
     suggestions: List<AiScheduleSuggestions.Suggestion>,
     onOpenCalendar: () -> Unit,
     onOpenSettings: () -> Unit,
-    onSend: (title: String, body: String, date: LocalDate, time: LocalTime?, priority: Priority, category: String, recurrence: Recurrence) -> Unit,
+    onCreateReminder: (title: String, body: String, date: LocalDate, time: LocalTime?, priority: Priority, category: String, recurrence: Recurrence) -> Unit,
+    onSaveEdit: (taskId: String, title: String, body: String, date: LocalDate, time: LocalTime?, priority: Priority, category: String, recurrence: Recurrence) -> Unit,
+    onBeginEdit: (String) -> Unit,
+    onCancelEdit: () -> Unit,
     onAcknowledge: (String) -> Unit,
     onComplete: (String) -> Unit,
     onDismiss: (String) -> Unit,
-    onReschedule: (String, LocalDate, LocalTime?) -> Unit
+    onReschedule: (String, LocalDate, LocalTime?) -> Unit,
+    onSnooze: (String) -> Unit,
+    onDelete: (String) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
@@ -101,6 +110,18 @@ fun ChatScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var rescheduleTaskId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(editingTask?.id) {
+        val task = editingTask ?: return@LaunchedEffect
+        title = task.title
+        body = task.body
+        val due = Instant.ofEpochMilli(task.dueAtEpochMillis).atZone(TimeDefaults.zoneId())
+        selectedDate = due.toLocalDate()
+        selectedTime = if (task.timeWasExplicitlyChosen) due.toLocalTime() else null
+        priority = task.priority
+        category = task.category
+        recurrence = task.recurrence
+    }
 
     val listState = rememberLazyListState()
     LaunchedEffect(messages.size) {
@@ -158,15 +179,20 @@ fun ChatScreen(
                         }
                     }
                     items(messages, key = { it.id }) { message ->
+                        val task = tasks.find { it.id == message.taskId }
                         MessageBubble(
                             message = message,
+                            task = task,
                             onAcknowledge = { message.taskId?.let(onAcknowledge) },
                             onComplete = { message.taskId?.let(onComplete) },
                             onDismiss = { message.taskId?.let(onDismiss) },
                             onReschedule = {
                                 rescheduleTaskId = message.taskId
                                 showDatePicker = true
-                            }
+                            },
+                            onSnooze = { message.taskId?.let(onSnooze) },
+                            onEdit = { message.taskId?.let(onBeginEdit) },
+                            onDelete = { message.taskId?.let(onDelete) }
                         )
                     }
                 }
@@ -208,8 +234,19 @@ fun ChatScreen(
                     onPriority = { priority = it; menuExpanded = false },
                     onCategory = { category = it; menuExpanded = false },
                     onRecurrence = { recurrence = it; menuExpanded = false },
+                    isEditing = editingTask != null,
+                    onCancelEdit = {
+                        onCancelEdit()
+                        title = ""
+                        body = ""
+                    },
                     onSend = {
-                        onSend(title, body, selectedDate, selectedTime, priority, category, recurrence)
+                        val current = editingTask
+                        if (current != null) {
+                            onSaveEdit(current.id, title, body, selectedDate, selectedTime, priority, category, recurrence)
+                        } else {
+                            onCreateReminder(title, body, selectedDate, selectedTime, priority, category, recurrence)
+                        }
                         title = ""
                         body = ""
                     }
@@ -268,10 +305,14 @@ fun ChatScreen(
 @Composable
 private fun MessageBubble(
     message: ChatMessageEntity,
+    task: TaskEntity?,
     onAcknowledge: () -> Unit,
     onComplete: () -> Unit,
     onDismiss: () -> Unit,
-    onReschedule: () -> Unit
+    onReschedule: () -> Unit,
+    onSnooze: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val isReminder = message.isReminderStyle ||
         message.kind == MessageKind.REMINDER ||
@@ -325,6 +366,13 @@ private fun MessageBubble(
                 TextButton(onClick = onDismiss) { Text("Dismiss", color = ReminderRed) }
             }
         }
+        if (task != null && !task.deleted && task.status != TaskStatus.COMPLETED && task.status != TaskStatus.DISMISSED) {
+            Row {
+                TextButton(onClick = onEdit) { Text("Edit", color = WaterBlue) }
+                TextButton(onClick = onSnooze) { Text("Snooze 10m", color = AccentOrange) }
+                TextButton(onClick = onDelete) { Text("Delete", color = ReminderRed) }
+            }
+        }
     }
 }
 
@@ -347,6 +395,8 @@ private fun Composer(
     onPriority: (Priority) -> Unit,
     onCategory: (String) -> Unit,
     onRecurrence: (Recurrence) -> Unit,
+    isEditing: Boolean,
+    onCancelEdit: () -> Unit,
     onSend: () -> Unit
 ) {
     val scheduleLabel = buildString {
@@ -362,6 +412,9 @@ private fun Composer(
             .padding(12.dp)
     ) {
         Text(scheduleLabel, color = WaterBlue, style = MaterialTheme.typography.labelLarge)
+        if (isEditing) {
+            Text("Editing reminder — send to save, or cancel.", color = AccentOrange, style = MaterialTheme.typography.bodyMedium)
+        }
         Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = title,
@@ -401,7 +454,10 @@ private fun Composer(
                 enabled = title.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = WaterBlue, contentColor = Foam)
             ) {
-                Icon(Icons.Default.Send, contentDescription = "Send")
+                Icon(Icons.Default.Send, contentDescription = if (isEditing) "Update reminder" else "Send")
+            }
+            if (isEditing) {
+                TextButton(onClick = onCancelEdit) { Text("Cancel") }
             }
         }
     }

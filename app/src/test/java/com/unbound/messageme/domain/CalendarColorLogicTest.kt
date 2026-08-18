@@ -52,4 +52,12 @@ class CalendarColorLogicTest {
         assertThat(CalendarColorLogic.statusForDay(today, tasks, today, zone))
             .isEqualTo(CalendarDayStatus.MIXED)
     }
+
+    @Test
+    fun pendingForFutureOpenTasks() {
+        val future = today.plusDays(2)
+        val tasks = listOf(task(future, TaskStatus.PENDING))
+        assertThat(CalendarColorLogic.statusForDay(future, tasks, today, zone))
+            .isEqualTo(CalendarDayStatus.HAS_PENDING)
+    }
 }

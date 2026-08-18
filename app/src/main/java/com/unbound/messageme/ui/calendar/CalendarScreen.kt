@@ -77,7 +77,8 @@ fun CalendarScreen(
     onBack: () -> Unit,
     onComplete: (String) -> Unit,
     onAcknowledge: (String) -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    onEdit: (String) -> Unit
 ) {
     var month by remember { mutableStateOf(YearMonth.now(TimeDefaults.zoneId())) }
     var selectedDate by remember { mutableStateOf(LocalDate.now(TimeDefaults.zoneId())) }
@@ -160,7 +161,13 @@ fun CalendarScreen(
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(dayTasks, key = { it.id }) { task ->
-                            TaskRow(task, { onComplete(task.id) }, { onAcknowledge(task.id) }, { onDelete(task.id) })
+                            TaskRow(
+                                task,
+                                { onComplete(task.id) },
+                                { onAcknowledge(task.id) },
+                                { onDelete(task.id) },
+                                { onEdit(task.id) }
+                            )
                         }
                     }
                 }
@@ -286,7 +293,8 @@ private fun TaskRow(
     task: TaskEntity,
     onComplete: () -> Unit,
     onAcknowledge: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     val time = Instant.ofEpochMilli(task.dueAtEpochMillis)
         .atZone(TimeDefaults.zoneId())
@@ -311,6 +319,7 @@ private fun TaskRow(
             }
             if (task.status != TaskStatus.COMPLETED) {
                 TextButton(onClick = onComplete) { Text("Mark done", color = WaterBlue) }
+                TextButton(onClick = onEdit) { Text("Edit", color = WaterBlue) }
             }
             TextButton(onClick = onDelete) { Text("Delete", color = DayOverdue) }
         }

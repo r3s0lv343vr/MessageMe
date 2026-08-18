@@ -12,7 +12,8 @@ class TimeDefaultsTest {
     @Test
     fun `default time is 3 AM when time omitted`() {
         val date = LocalDate.of(2026, 8, 10)
-        val (millis, explicit) = TimeDefaults.resolveDueAt(date, null, zone)
+        val now = LocalDate.of(2026, 8, 9).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        val (millis, explicit) = TimeDefaults.resolveDueAt(date, null, zone, now)
         val local = java.time.Instant.ofEpochMilli(millis).atZone(zone)
         assertThat(explicit).isFalse()
         assertThat(local.hour).isEqualTo(3)
@@ -24,10 +25,22 @@ class TimeDefaultsTest {
     fun `explicit time is preserved`() {
         val date = LocalDate.of(2026, 8, 10)
         val time = LocalTime.of(14, 30)
-        val (millis, explicit) = TimeDefaults.resolveDueAt(date, time, zone)
+        val now = LocalDate.of(2026, 8, 9).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        val (millis, explicit) = TimeDefaults.resolveDueAt(date, time, zone, now)
         val local = java.time.Instant.ofEpochMilli(millis).atZone(zone)
         assertThat(explicit).isTrue()
         assertThat(local.toLocalTime()).isEqualTo(time)
+    }
+
+    @Test
+    fun `omitted time rolls to next morning when 3 AM already passed`() {
+        val date = LocalDate.of(2026, 8, 10)
+        val now = date.atTime(15, 0).atZone(zone).toInstant().toEpochMilli()
+        val (millis, explicit) = TimeDefaults.resolveDueAt(date, null, zone, now)
+        val local = java.time.Instant.ofEpochMilli(millis).atZone(zone)
+        assertThat(explicit).isFalse()
+        assertThat(local.toLocalDate()).isEqualTo(date.plusDays(1))
+        assertThat(local.hour).isEqualTo(3)
     }
 
     @Test

@@ -104,6 +104,7 @@ private fun AppNav(
     val openCount by viewModel.openCount.collectAsStateWithLifecycle()
     val lastExport by viewModel.lastExport.collectAsStateWithLifecycle()
     val notice by viewModel.notice.collectAsStateWithLifecycle()
+    val editingTask by viewModel.editingTask.collectAsStateWithLifecycle()
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
         viewModel.refreshAlarms()
@@ -113,16 +114,25 @@ private fun AppNav(
         composable("chat") {
             ChatScreen(
                 messages = messages,
+                tasks = tasks,
+                editingTask = editingTask,
                 suggestions = viewModel.suggestions(),
                 onOpenCalendar = { navController.navigate("calendar") },
                 onOpenSettings = { navController.navigate("settings") },
-                onSend = { title, body, date, time, priority, category, recurrence ->
+                onCreateReminder = { title, body, date, time, priority, category, recurrence ->
                     viewModel.createReminder(title, body, date, time, priority, category, recurrence, null)
                 },
+                onSaveEdit = { taskId, title, body, date, time, priority, category, recurrence ->
+                    viewModel.editReminder(taskId, title, body, date, time, priority, category, recurrence, null)
+                },
+                onBeginEdit = viewModel::beginEdit,
+                onCancelEdit = viewModel::cancelEdit,
                 onAcknowledge = viewModel::acknowledge,
                 onComplete = viewModel::complete,
                 onDismiss = viewModel::dismiss,
-                onReschedule = viewModel::reschedule
+                onReschedule = viewModel::reschedule,
+                onSnooze = viewModel::snooze,
+                onDelete = viewModel::delete
             )
         }
         composable("calendar") {
@@ -133,7 +143,11 @@ private fun AppNav(
                 onBack = { navController.popBackStack() },
                 onComplete = viewModel::complete,
                 onAcknowledge = viewModel::acknowledge,
-                onDelete = viewModel::delete
+                onDelete = viewModel::delete,
+                onEdit = { taskId ->
+                    viewModel.beginEdit(taskId)
+                    navController.popBackStack()
+                }
             )
         }
         composable("settings") {

@@ -104,7 +104,7 @@ Release-ready bundle (debug signing only until a keystore is supplied):
 ### Reminder cadence
 
 - Pre-task: 3h, 1h, 30m, 5m  
-- If no time chosen: due **3:00 AM** local + daytime envelope messages at **8:00, 10:00, 15:00**  
+- If no time chosen: due **3:00 AM** local + daytime envelope messages at **8:00, 10:00, 15:00**. If 3:00 AM on the chosen day already passed, the default rolls to **the next morning**.  
 - Unacked follow-ups: +30m, +90m, +180m after due → shelve as unacknowledged  
 - After ack: completion check +1h, retry +1h, then reschedule / dismiss / complete
 
@@ -117,7 +117,8 @@ Release-ready bundle (debug signing only until a keystore is supplied):
 ## Manual smoke checklist
 
 - [ ] Create reminder with selected time  
-- [ ] Create reminder without time → 3:00 AM assigned  
+- [ ] Create reminder without time → 3:00 AM assigned (next morning if 3:00 AM already passed)  
+- [ ] Edit, snooze, and delete a reminder from chat  
 - [ ] Notification delivered (when permission + internal toggle on)  
 - [ ] Internal notification toggle pauses delivery  
 - [ ] System-blocked notifications show Settings CTA  

@@ -63,6 +63,9 @@ class MessageMeViewModel @Inject constructor(
     private val _pendingPermissionPrompt = MutableStateFlow(false)
     val pendingPermissionPrompt = _pendingPermissionPrompt.asStateFlow()
 
+    private val _editingTask = MutableStateFlow<TaskEntity?>(null)
+    val editingTask = _editingTask.asStateFlow()
+
     val firebaseConfigured: Boolean get() = cloudSync.isConfigured
 
     fun suggestions(): List<AiScheduleSuggestions.Suggestion> =
@@ -101,7 +104,10 @@ class MessageMeViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             repository.editReminder(taskId, title, body, date, time, priority, category, recurrence, customDays)
-                .onSuccess { _notice.value = UiNotice("Reminder updated") }
+                .onSuccess {
+                    _editingTask.value = null
+                    _notice.value = UiNotice("Reminder updated")
+                }
                 .onFailure { _notice.value = UiNotice(it.message ?: "Update failed", true) }
         }
     }
@@ -113,6 +119,14 @@ class MessageMeViewModel @Inject constructor(
     fun reschedule(taskId: String, date: LocalDate, time: LocalTime?) =
         viewModelScope.launch { repository.reschedule(taskId, date, time) }
     fun snooze(taskId: String) = viewModelScope.launch { repository.snooze(taskId, 10) }
+
+    fun beginEdit(taskId: String) {
+        _editingTask.value = tasks.value.find { it.id == taskId && !it.deleted }
+    }
+
+    fun cancelEdit() {
+        _editingTask.value = null
+    }
 
     fun setNotificationsEnabled(enabled: Boolean) = viewModelScope.launch {
         preferences.setInternalNotificationsEnabled(enabled)

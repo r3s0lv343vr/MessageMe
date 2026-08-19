@@ -198,19 +198,25 @@ fun ChatScreen(
                 }
 
                 if (suggestions.isNotEmpty()) {
-                    Row(
+                    Column(
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.Start
                     ) {
                         suggestions.take(3).forEach { suggestion ->
                             TextButton(
-                                onClick = { selectedTime = suggestion.time }, Modifier
+                                onClick = { selectedTime = suggestion.time },
+                                modifier = Modifier
+                                    .fillMaxWidth()
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(PastelYellow.copy(alpha = 0.7f))
                             ) {
-                                Text("${suggestion.label}: ${suggestion.time}", color = Ink)
+                                Text(
+                                    "${suggestion.label}: ${suggestion.time.format(DateTimeFormatter.ofPattern("h:mm a"))}",
+                                    color = Ink
+                                )
                             }
                         }
                     }

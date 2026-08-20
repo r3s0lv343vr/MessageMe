@@ -32,6 +32,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -80,7 +81,6 @@ import com.unbound.messageme.ui.theme.WaterBlue
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -262,15 +262,20 @@ fun ChatScreen(
     }
 
     if (showDatePicker) {
+        val todayUtcMillis = TimeDefaults.utcMillisFromLocalDate(LocalDate.now(TimeDefaults.zoneId()))
         val dateState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+            initialSelectedDateMillis = TimeDefaults.utcMillisFromLocalDate(selectedDate),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                    utcTimeMillis >= todayUtcMillis
+            }
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false; rescheduleTaskId = null },
             confirmButton = {
                 TextButton(onClick = {
                     dateState.selectedDateMillis?.let { millis ->
-                        val date = Instant.ofEpochMilli(millis).atZone(ZoneId.of("UTC")).toLocalDate()
+                        val date = TimeDefaults.localDateFromUtcMillis(millis)
                         val taskId = rescheduleTaskId
                         if (taskId != null) {
                             onReschedule(taskId, date, selectedTime)

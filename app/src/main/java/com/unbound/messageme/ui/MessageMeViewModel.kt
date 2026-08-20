@@ -12,11 +12,13 @@ import com.unbound.messageme.data.repository.MessageRepository
 import com.unbound.messageme.data.sync.CloudSync
 import com.unbound.messageme.domain.AiScheduleSuggestions
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDate
@@ -67,6 +69,15 @@ class MessageMeViewModel @Inject constructor(
     val editingTask = _editingTask.asStateFlow()
 
     val firebaseConfigured: Boolean get() = cloudSync.isConfigured
+
+    init {
+        viewModelScope.launch {
+            while (isActive) {
+                delay(5_000)
+                repository.deliverOverdueReminders()
+            }
+        }
+    }
 
     fun suggestions(): List<AiScheduleSuggestions.Suggestion> =
         AiScheduleSuggestions.suggest(tasks.value)
@@ -173,7 +184,10 @@ class MessageMeViewModel @Inject constructor(
             .onFailure { _notice.value = UiNotice(it.message ?: "Sync failed", true) }
     }
 
-    fun refreshAlarms() = viewModelScope.launch { repository.rescheduleAllPendingAlarms() }
+    fun refreshAlarms() = viewModelScope.launch {
+        repository.deliverOverdueReminders()
+        repository.rescheduleAllPendingAlarms()
+    }
 
     private suspend fun maybePromptNotifications() {
         if (!hasAskedPermission.value) {

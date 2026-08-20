@@ -88,6 +88,15 @@ interface ScheduledReminderDao {
     @Query(
         """
         SELECT * FROM scheduled_reminders
+        WHERE cancelled = 0 AND delivered = 0 AND triggerAtEpochMillis <= :nowEpochMillis
+        ORDER BY triggerAtEpochMillis ASC
+        """
+    )
+    suspend fun getOverdue(nowEpochMillis: Long): List<ScheduledReminderEntity>
+
+    @Query(
+        """
+        SELECT * FROM scheduled_reminders
         WHERE taskId = :taskId AND cancelled = 0
         ORDER BY triggerAtEpochMillis ASC
         """

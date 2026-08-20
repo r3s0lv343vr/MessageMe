@@ -25,6 +25,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                repository.deliverOverdueReminders()
                 repository.rescheduleAllPendingAlarms()
             } finally {
                 pending.finish()

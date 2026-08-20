@@ -24,6 +24,7 @@ enum class ReminderType {
     T_MINUS_1H,
     T_MINUS_30M,
     T_MINUS_5M,
+    AT_DUE,
     DAYTIME_8AM,
     DAYTIME_10AM,
     DAYTIME_3PM,

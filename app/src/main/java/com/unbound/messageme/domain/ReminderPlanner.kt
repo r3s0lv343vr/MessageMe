@@ -29,6 +29,11 @@ object ReminderPlanner {
             }
         }
 
+        // The personal message itself, at the time the user chose.
+        if (dueAtEpochMillis > nowEpochMillis) {
+            out += reminder(taskId, ReminderType.AT_DUE, dueAtEpochMillis)
+        }
+
         if (!timeWasExplicitlyChosen) {
             val dueDate = Instant.ofEpochMilli(dueAtEpochMillis)
                 .atZone(TimeDefaults.zoneId())

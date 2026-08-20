@@ -16,14 +16,18 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID) ?: return
+        val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID).orEmpty()
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 when (intent.action) {
-                    NotificationHelper.ACTION_COMPLETE -> repository.markCompleted(taskId)
+                    NotificationHelper.ACTION_ACKNOWLEDGE -> repository.acknowledge(taskId)
                     NotificationHelper.ACTION_SNOOZE -> repository.snooze(taskId, minutes = 10)
                 }
             } finally {
+                if (reminderId.isNotEmpty()) {
+                    NotificationHelper.cancel(context, taskId, reminderId)
+                }
                 pending.finish()
             }
         }

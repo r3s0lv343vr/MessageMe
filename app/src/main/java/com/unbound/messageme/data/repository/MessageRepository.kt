@@ -345,7 +345,7 @@ class MessageRepository @Inject constructor(
                 status = updatedTask.status
             )
         ) {
-            scheduler.notifyUser(updatedTask, content.body, reminder)
+            scheduler.notifyUser(updatedTask, reminder)
         }
     }
 

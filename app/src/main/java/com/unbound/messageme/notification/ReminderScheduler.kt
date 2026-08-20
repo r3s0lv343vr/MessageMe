@@ -69,11 +69,10 @@ class ReminderScheduler @Inject constructor(
         reminders.forEach { cancel(it.id) }
     }
 
-    fun notifyUser(task: TaskEntity, body: String, reminder: ScheduledReminderEntity) {
+    fun notifyUser(task: TaskEntity, reminder: ScheduledReminderEntity) {
         NotificationHelper.showReminder(
             context = context,
             task = task,
-            body = body,
             reminderId = reminder.id,
             type = reminder.type
         )

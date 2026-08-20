@@ -152,6 +152,10 @@ class MessageMeViewModel @Inject constructor(
 
     fun clearNotice() { _notice.value = null }
 
+    fun markMessageRead(messageId: String) = viewModelScope.launch {
+        repository.markMessageRead(messageId)
+    }
+
     fun exportJson() = viewModelScope.launch {
         _lastExport.value = exporter.exportJson(tasks.value)
         _notice.value = UiNotice("JSON backup created")

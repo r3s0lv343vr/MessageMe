@@ -25,6 +25,7 @@ class ReminderPlannerTest {
             ReminderType.T_MINUS_1H,
             ReminderType.T_MINUS_30M,
             ReminderType.T_MINUS_5M,
+            ReminderType.AT_DUE,
             ReminderType.UNACKED_1,
             ReminderType.UNACKED_2,
             ReminderType.UNACKED_3
@@ -59,7 +60,24 @@ class ReminderPlannerTest {
         val now = due - TimeDefaults.minutesToMillis(10)
         val planned = ReminderPlanner.planForTask("t1", due, true, now)
         assertThat(planned.map { it.type }).contains(ReminderType.T_MINUS_5M)
+        assertThat(planned.map { it.type }).contains(ReminderType.AT_DUE)
         assertThat(planned.map { it.type }).doesNotContain(ReminderType.T_MINUS_3H)
+    }
+
+    @Test
+    fun `plans the due-time message when the reminder is only a few minutes away`() {
+        val due = LocalDate.of(2026, 8, 20)
+            .atTime(LocalTime.of(18, 0))
+            .atZone(zone)
+            .toInstant()
+            .toEpochMilli()
+        val now = due - TimeDefaults.minutesToMillis(3)
+        val planned = ReminderPlanner.planForTask("t1", due, true, now)
+        val types = planned.map { it.type }
+        assertThat(types).contains(ReminderType.AT_DUE)
+        assertThat(types).doesNotContain(ReminderType.T_MINUS_5M)
+        val atDue = planned.first { it.type == ReminderType.AT_DUE }
+        assertThat(atDue.triggerAtEpochMillis).isEqualTo(due)
     }
 
     @Test

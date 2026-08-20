@@ -15,6 +15,7 @@ import com.unbound.messageme.data.local.TaskEntity
 import com.unbound.messageme.data.local.TaskStatus
 import com.unbound.messageme.data.preferences.UserPreferences
 import com.unbound.messageme.data.sync.CloudSync
+import com.unbound.messageme.domain.NotificationCopy
 import com.unbound.messageme.domain.NotificationDeliveryPolicy
 import com.unbound.messageme.domain.ReminderPlanner
 import com.unbound.messageme.domain.SyncConflictLogic
@@ -22,6 +23,8 @@ import com.unbound.messageme.domain.TimeDefaults
 import com.unbound.messageme.notification.ReminderScheduler
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -40,6 +43,7 @@ class MessageRepository @Inject constructor(
     private val cloudSync: CloudSync
 ) {
     private val gson = Gson()
+    private val deliverLock = Mutex()
 
     fun observeMessages(): Flow<List<ChatMessageEntity>> = messageDao.observeAll()
     fun observeTasks(): Flow<List<TaskEntity>> = taskDao.observeActive()
@@ -277,7 +281,11 @@ class MessageRepository @Inject constructor(
         )
     }
 
-    suspend fun deliverReminder(reminderId: String) {
+    suspend fun deliverOverdueReminders(nowEpochMillis: Long = TimeDefaults.nowMillis()) {
+        reminderDao.getOverdue(nowEpochMillis).forEach { deliverReminder(it.id) }
+    }
+
+    suspend fun deliverReminder(reminderId: String) = deliverLock.withLock {
         val reminder = reminderDao.getById(reminderId) ?: return
         if (reminder.delivered || reminder.cancelled) return
         val task = taskDao.getById(reminder.taskId) ?: return
@@ -470,6 +478,8 @@ class MessageRepository @Inject constructor(
             ReminderCopy("✉️ Reminder (30 minutes): ${task.title}", MessageKind.REMINDER, true, false, false)
         ReminderType.T_MINUS_5M ->
             ReminderCopy("✉️ Reminder (5 minutes): ${task.title}", MessageKind.REMINDER, true, false, false)
+        ReminderType.AT_DUE ->
+            ReminderCopy("✉️ ${NotificationCopy.personalNote(task)}", MessageKind.REMINDER, true, false, false)
         ReminderType.DAYTIME_8AM ->
             ReminderCopy("✉️ Morning check-in (8:00 AM): ${task.title}", MessageKind.DAYTIME_REMINDER, true, false, false)
         ReminderType.DAYTIME_10AM ->

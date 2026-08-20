@@ -5,6 +5,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.unbound.messageme.MainActivity
+import com.unbound.messageme.data.local.ReminderType
 import com.unbound.messageme.data.local.ScheduledReminderEntity
 import com.unbound.messageme.data.local.TaskEntity
 import com.unbound.messageme.domain.TimeDefaults
@@ -39,7 +41,20 @@ class ReminderScheduler @Inject constructor(
             true
         }
 
-        if (canExact) {
+        if (canExact && reminder.type == ReminderType.AT_DUE) {
+            val showApp = PendingIntent.getActivity(
+                context,
+                reminder.id.hashCode() + 17,
+                Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.setAlarmClock(
+                AlarmManager.AlarmClockInfo(reminder.triggerAtEpochMillis, showApp),
+                pending
+            )
+        } else if (canExact) {
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 reminder.triggerAtEpochMillis,

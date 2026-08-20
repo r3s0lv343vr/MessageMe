@@ -2,6 +2,7 @@ package com.unbound.messageme
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,6 +13,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -23,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.unbound.messageme.notification.NotificationHelper
 import com.unbound.messageme.ui.MessageMeViewModel
 import com.unbound.messageme.ui.calendar.CalendarScreen
 import com.unbound.messageme.ui.chat.ChatScreen
@@ -33,6 +36,7 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private var showInAppPermissionDialog by mutableStateOf(false)
+    private var rewriteTaskId by mutableStateOf<String?>(null)
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
@@ -42,6 +46,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        consumeNotificationIntent(intent)
 
         setContent {
             val viewModel: MessageMeViewModel = hiltViewModel()
@@ -50,6 +55,12 @@ class MainActivity : ComponentActivity() {
                 "dark" -> true
                 "light" -> false
                 else -> androidx.compose.foundation.isSystemInDarkTheme()
+            }
+
+            LaunchedEffect(rewriteTaskId) {
+                val taskId = rewriteTaskId ?: return@LaunchedEffect
+                viewModel.beginEdit(taskId)
+                rewriteTaskId = null
             }
 
             MessageMeTheme(darkTheme = dark) {
@@ -73,6 +84,23 @@ class MainActivity : ComponentActivity() {
 
         // Restore alarms after process start
         // ViewModel refresh is triggered from composition via LaunchedEffect in AppNav
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        consumeNotificationIntent(intent)
+    }
+
+    private fun consumeNotificationIntent(intent: Intent?) {
+        val taskId = intent?.getStringExtra(NotificationHelper.EXTRA_TASK_ID) ?: return
+        val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID)
+        if (intent.action == NotificationHelper.ACTION_REWRITE) {
+            rewriteTaskId = taskId
+            if (reminderId != null) {
+                NotificationHelper.cancel(this, taskId, reminderId)
+            }
+        }
     }
 
     private fun requestSystemNotificationPermission() {

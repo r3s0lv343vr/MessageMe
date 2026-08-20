@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,12 +20,14 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -55,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.unbound.messageme.data.local.ChatMessageEntity
 import com.unbound.messageme.data.local.MessageKind
@@ -104,9 +108,8 @@ fun ChatScreen(
     var selectedDate by remember { mutableStateOf(LocalDate.now(TimeDefaults.zoneId())) }
     var selectedTime by remember { mutableStateOf<LocalTime?>(null) }
     var priority by remember { mutableStateOf(Priority.NORMAL) }
-    var category by remember { mutableStateOf("General") }
+    var category by remember { mutableStateOf("Personal") }
     var recurrence by remember { mutableStateOf(Recurrence.NONE) }
-    var menuExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var rescheduleTaskId by remember { mutableStateOf<String?>(null) }
@@ -232,14 +235,12 @@ fun ChatScreen(
                     priority = priority,
                     category = category,
                     recurrence = recurrence,
-                    menuExpanded = menuExpanded,
-                    onMenu = { menuExpanded = it },
-                    onPickDate = { showDatePicker = true; menuExpanded = false },
-                    onPickTime = { showTimePicker = true; menuExpanded = false },
-                    onClearTime = { selectedTime = null; menuExpanded = false },
-                    onPriority = { priority = it; menuExpanded = false },
-                    onCategory = { category = it; menuExpanded = false },
-                    onRecurrence = { recurrence = it; menuExpanded = false },
+                    onPickDate = { showDatePicker = true },
+                    onPickTime = { showTimePicker = true },
+                    onClearTime = { selectedTime = null },
+                    onPriority = { priority = it },
+                    onCategory = { category = it },
+                    onRecurrence = { recurrence = it },
                     isEditing = editingTask != null,
                     onCancelEdit = {
                         onCancelEdit()
@@ -382,6 +383,22 @@ private fun MessageBubble(
     }
 }
 
+private enum class ComposerMenu { Date, Time, Priority, Category, Repeat }
+
+private fun priorityLabel(priority: Priority): String = when (priority) {
+    Priority.LOW -> "Low"
+    Priority.NORMAL -> "Medium"
+    Priority.HIGH -> "High"
+}
+
+private fun recurrenceLabel(recurrence: Recurrence): String = when (recurrence) {
+    Recurrence.NONE -> "None"
+    Recurrence.DAILY -> "Daily"
+    Recurrence.WEEKLY -> "Weekly"
+    Recurrence.MONTHLY -> "Monthly"
+    Recurrence.CUSTOM -> "Custom"
+}
+
 @Composable
 private fun Composer(
     title: String,
@@ -393,8 +410,6 @@ private fun Composer(
     priority: Priority,
     category: String,
     recurrence: Recurrence,
-    menuExpanded: Boolean,
-    onMenu: (Boolean) -> Unit,
     onPickDate: () -> Unit,
     onPickTime: () -> Unit,
     onClearTime: () -> Unit,
@@ -405,11 +420,11 @@ private fun Composer(
     onCancelEdit: () -> Unit,
     onSend: () -> Unit
 ) {
-    val scheduleLabel = buildString {
-        append(selectedDate.format(DateTimeFormatter.ofPattern("MMM d")))
-        append(if (selectedTime != null) " · ${selectedTime.format(DateTimeFormatter.ofPattern("h:mm a"))}" else " · 3:00 AM default")
-        append(" · ${priority.name.lowercase()} · $category · ${recurrence.name.lowercase()}")
-    }
+    var openMenu by remember { mutableStateOf<ComposerMenu?>(null) }
+    var showCustomCategory by remember { mutableStateOf(false) }
+    var customCategory by remember { mutableStateOf("") }
+    val dateLabel = selectedDate.format(DateTimeFormatter.ofPattern("MMM d"))
+    val timeLabel = selectedTime?.format(DateTimeFormatter.ofPattern("h:mm a")) ?: "3:00 AM"
 
     Column(
         Modifier
@@ -417,9 +432,100 @@ private fun Composer(
             .background(Foam.copy(alpha = 0.92f))
             .padding(12.dp)
     ) {
-        Text(scheduleLabel, color = WaterBlue, style = MaterialTheme.typography.labelLarge)
         if (isEditing) {
-            Text("Editing reminder — send to save, or cancel.", color = AccentOrange, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "Editing reminder — send to save, or cancel.",
+                color = AccentOrange,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(Modifier.height(6.dp))
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PickedValueMenu(
+                value = dateLabel,
+                contentDescription = "Pick date",
+                expanded = openMenu == ComposerMenu.Date,
+                onExpand = { openMenu = ComposerMenu.Date },
+                onDismiss = { openMenu = null }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Pick date") },
+                    onClick = {
+                        openMenu = null
+                        onPickDate()
+                    }
+                )
+            }
+            PickedValueMenu(
+                value = timeLabel,
+                contentDescription = "Pick time",
+                expanded = openMenu == ComposerMenu.Time,
+                onExpand = { openMenu = ComposerMenu.Time },
+                onDismiss = { openMenu = null }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Pick time") },
+                    onClick = {
+                        openMenu = null
+                        onPickTime()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Use 3:00 AM default") },
+                    onClick = {
+                        openMenu = null
+                        onClearTime()
+                    }
+                )
+            }
+            PickedValueMenu(
+                value = priorityLabel(priority),
+                contentDescription = "Priority",
+                expanded = openMenu == ComposerMenu.Priority,
+                onExpand = { openMenu = ComposerMenu.Priority },
+                onDismiss = { openMenu = null }
+            ) {
+                DropdownMenuItem(text = { Text("Low") }, onClick = { onPriority(Priority.LOW); openMenu = null })
+                DropdownMenuItem(text = { Text("Medium") }, onClick = { onPriority(Priority.NORMAL); openMenu = null })
+                DropdownMenuItem(text = { Text("High") }, onClick = { onPriority(Priority.HIGH); openMenu = null })
+            }
+            PickedValueMenu(
+                value = category,
+                contentDescription = "Category",
+                expanded = openMenu == ComposerMenu.Category,
+                onExpand = { openMenu = ComposerMenu.Category },
+                onDismiss = { openMenu = null }
+            ) {
+                DropdownMenuItem(text = { Text("Home") }, onClick = { onCategory("Home"); openMenu = null })
+                DropdownMenuItem(text = { Text("Work") }, onClick = { onCategory("Work"); openMenu = null })
+                DropdownMenuItem(text = { Text("Personal") }, onClick = { onCategory("Personal"); openMenu = null })
+                DropdownMenuItem(
+                    text = { Text("Custom…") },
+                    onClick = {
+                        openMenu = null
+                        customCategory = if (category in listOf("Home", "Work", "Personal")) "" else category
+                        showCustomCategory = true
+                    }
+                )
+            }
+            PickedValueMenu(
+                value = recurrenceLabel(recurrence),
+                contentDescription = "Repeat",
+                expanded = openMenu == ComposerMenu.Repeat,
+                onExpand = { openMenu = ComposerMenu.Repeat },
+                onDismiss = { openMenu = null }
+            ) {
+                DropdownMenuItem(text = { Text("None") }, onClick = { onRecurrence(Recurrence.NONE); openMenu = null })
+                DropdownMenuItem(text = { Text("Daily") }, onClick = { onRecurrence(Recurrence.DAILY); openMenu = null })
+                DropdownMenuItem(text = { Text("Weekly") }, onClick = { onRecurrence(Recurrence.WEEKLY); openMenu = null })
+                DropdownMenuItem(text = { Text("Monthly") }, onClick = { onRecurrence(Recurrence.MONTHLY); openMenu = null })
+            }
         }
         Spacer(Modifier.height(6.dp))
         OutlinedTextField(
@@ -436,25 +542,6 @@ private fun Composer(
                 placeholder = { Text("Message yourself…") },
                 maxLines = 3
             )
-            Box {
-                IconButton(onClick = { onMenu(true) }) {
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Schedule options")
-                }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { onMenu(false) }) {
-                    DropdownMenuItem(text = { Text("Pick date") }, onClick = onPickDate)
-                    DropdownMenuItem(text = { Text("Pick time") }, onClick = onPickTime)
-                    DropdownMenuItem(text = { Text("Use 3:00 AM default") }, onClick = onClearTime)
-                    DropdownMenuItem(text = { Text("Priority: Low") }, onClick = { onPriority(Priority.LOW) })
-                    DropdownMenuItem(text = { Text("Priority: Normal") }, onClick = { onPriority(Priority.NORMAL) })
-                    DropdownMenuItem(text = { Text("Priority: High") }, onClick = { onPriority(Priority.HIGH) })
-                    DropdownMenuItem(text = { Text("Category: Work") }, onClick = { onCategory("Work") })
-                    DropdownMenuItem(text = { Text("Category: Personal") }, onClick = { onCategory("Personal") })
-                    DropdownMenuItem(text = { Text("Repeat: None") }, onClick = { onRecurrence(Recurrence.NONE) })
-                    DropdownMenuItem(text = { Text("Repeat: Daily") }, onClick = { onRecurrence(Recurrence.DAILY) })
-                    DropdownMenuItem(text = { Text("Repeat: Weekly") }, onClick = { onRecurrence(Recurrence.WEEKLY) })
-                    DropdownMenuItem(text = { Text("Repeat: Monthly") }, onClick = { onRecurrence(Recurrence.MONTHLY) })
-                }
-            }
             Button(
                 onClick = onSend,
                 enabled = title.isNotBlank(),
@@ -466,5 +553,58 @@ private fun Composer(
                 TextButton(onClick = onCancelEdit) { Text("Cancel") }
             }
         }
+    }
+
+    if (showCustomCategory) {
+        AlertDialog(
+            onDismissRequest = { showCustomCategory = false },
+            title = { Text("Custom category") },
+            text = {
+                OutlinedTextField(
+                    value = customCategory,
+                    onValueChange = { customCategory = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("e.g. Errands") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val defined = customCategory.trim()
+                        if (defined.isNotEmpty()) onCategory(defined)
+                        showCustomCategory = false
+                    },
+                    enabled = customCategory.isNotBlank()
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomCategory = false }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun PickedValueMenu(
+    value: String,
+    contentDescription: String,
+    expanded: Boolean,
+    onExpand: () -> Unit,
+    onDismiss: () -> Unit,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
+) {
+    Box {
+        TextButton(onClick = onExpand) {
+            Text(
+                value,
+                color = Ink,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Icon(Icons.Default.ArrowDropDown, contentDescription = contentDescription, tint = WaterBlue)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = onDismiss, content = content)
     }
 }

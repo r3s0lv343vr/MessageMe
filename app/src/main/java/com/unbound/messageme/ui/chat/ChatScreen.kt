@@ -237,7 +237,6 @@ fun ChatScreen(
                     recurrence = recurrence,
                     onPickDate = { showDatePicker = true },
                     onPickTime = { showTimePicker = true },
-                    onClearTime = { selectedTime = null },
                     onPriority = { priority = it },
                     onCategory = { category = it },
                     onRecurrence = { recurrence = it },
@@ -291,10 +290,10 @@ fun ChatScreen(
 
     if (showTimePicker) {
         val timeState = rememberTimePickerState(
-            initialHour = selectedTime?.hour ?: 9,
-            initialMinute = selectedTime?.minute ?: 0
+            initialHour = selectedTime?.hour ?: TimeDefaults.DEFAULT_HOUR,
+            initialMinute = selectedTime?.minute ?: TimeDefaults.DEFAULT_MINUTE
         )
-        androidx.compose.material3.AlertDialog(
+        AlertDialog(
             onDismissRequest = { showTimePicker = false },
             confirmButton = {
                 TextButton(onClick = {
@@ -304,7 +303,18 @@ fun ChatScreen(
             },
             dismissButton = { TextButton(onClick = { showTimePicker = false }) { Text("Cancel") } },
             title = { Text("Task time") },
-            text = { TimePicker(state = timeState) }
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    TimePicker(state = timeState)
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = {
+                        selectedTime = null
+                        showTimePicker = false
+                    }) {
+                        Text("Use 3:00 AM default")
+                    }
+                }
+            }
         )
     }
 }
@@ -383,7 +393,7 @@ private fun MessageBubble(
     }
 }
 
-private enum class ComposerMenu { Date, Time, Priority, Category, Repeat }
+private enum class ComposerMenu { Priority, Category, Repeat }
 
 private fun priorityLabel(priority: Priority): String = when (priority) {
     Priority.LOW -> "Low"
@@ -412,7 +422,6 @@ private fun Composer(
     recurrence: Recurrence,
     onPickDate: () -> Unit,
     onPickTime: () -> Unit,
-    onClearTime: () -> Unit,
     onPriority: (Priority) -> Unit,
     onCategory: (String) -> Unit,
     onRecurrence: (Recurrence) -> Unit,
@@ -447,43 +456,16 @@ private fun Composer(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            PickedValueMenu(
+            PickedValueButton(
                 value = dateLabel,
                 contentDescription = "Pick date",
-                expanded = openMenu == ComposerMenu.Date,
-                onExpand = { openMenu = ComposerMenu.Date },
-                onDismiss = { openMenu = null }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Pick date") },
-                    onClick = {
-                        openMenu = null
-                        onPickDate()
-                    }
-                )
-            }
-            PickedValueMenu(
+                onClick = onPickDate
+            )
+            PickedValueButton(
                 value = timeLabel,
                 contentDescription = "Pick time",
-                expanded = openMenu == ComposerMenu.Time,
-                onExpand = { openMenu = ComposerMenu.Time },
-                onDismiss = { openMenu = null }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Pick time") },
-                    onClick = {
-                        openMenu = null
-                        onPickTime()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Use 3:00 AM default") },
-                    onClick = {
-                        openMenu = null
-                        onClearTime()
-                    }
-                )
-            }
+                onClick = onPickTime
+            )
             PickedValueMenu(
                 value = priorityLabel(priority),
                 contentDescription = "Priority",
@@ -582,6 +564,24 @@ private fun Composer(
                 TextButton(onClick = { showCustomCategory = false }) { Text("Cancel") }
             }
         )
+    }
+}
+
+@Composable
+private fun PickedValueButton(
+    value: String,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    TextButton(onClick = onClick) {
+        Text(
+            value,
+            color = Ink,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Icon(Icons.Default.ArrowDropDown, contentDescription = contentDescription, tint = WaterBlue)
     }
 }
 

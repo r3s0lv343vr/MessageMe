@@ -1,10 +1,6 @@
 package com.unbound.messageme.ui.chat
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -62,12 +57,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.unbound.messageme.data.local.ChatMessageEntity
-import com.unbound.messageme.data.local.MessageKind
 import com.unbound.messageme.data.local.Priority
 import com.unbound.messageme.data.local.Recurrence
 import com.unbound.messageme.data.local.TaskEntity
-import com.unbound.messageme.data.local.TaskStatus
 import com.unbound.messageme.domain.AiScheduleSuggestions
+import com.unbound.messageme.domain.InboxLogic
 import com.unbound.messageme.domain.TimeDefaults
 import com.unbound.messageme.ui.components.WatercolorBackground
 import com.unbound.messageme.ui.theme.AccentOrange
@@ -75,8 +69,6 @@ import com.unbound.messageme.ui.theme.BubbleSelf
 import com.unbound.messageme.ui.theme.Foam
 import com.unbound.messageme.ui.theme.Ink
 import com.unbound.messageme.ui.theme.PastelYellow
-import com.unbound.messageme.ui.theme.ReminderOrange
-import com.unbound.messageme.ui.theme.ReminderRed
 import com.unbound.messageme.ui.theme.WaterBlue
 import java.time.Instant
 import java.time.LocalDate
@@ -96,9 +88,6 @@ fun ChatScreen(
     onSaveEdit: (taskId: String, title: String, body: String, date: LocalDate, time: LocalTime?, priority: Priority, category: String, recurrence: Recurrence) -> Unit,
     onBeginEdit: (String) -> Unit,
     onCancelEdit: () -> Unit,
-    onAcknowledge: (String) -> Unit,
-    onComplete: (String) -> Unit,
-    onDismiss: (String) -> Unit,
     onReschedule: (String, LocalDate, LocalTime?) -> Unit,
     onSnooze: (String) -> Unit,
     onDelete: (String) -> Unit
@@ -126,9 +115,10 @@ fun ChatScreen(
         recurrence = task.recurrence
     }
 
+    val scheduled = remember(tasks, messages) { InboxLogic.scheduledTasks(tasks, messages) }
     val listState = rememberLazyListState()
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
+    LaunchedEffect(scheduled.size) {
+        if (scheduled.isNotEmpty()) listState.animateScrollToItem(scheduled.lastIndex)
     }
 
     WatercolorBackground {
@@ -138,7 +128,7 @@ fun ChatScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            "MessageMe",
+                            "Scheduled",
                             style = MaterialTheme.typography.headlineMedium,
                             color = Ink
                         )
@@ -171,31 +161,26 @@ fun ChatScreen(
                     contentPadding = PaddingValues(vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    if (messages.isEmpty()) {
+                    if (scheduled.isEmpty()) {
                         item {
                             Text(
-                                text = "Message yourself a task.\nAdd a title, pick a date — time is optional (defaults to 3:00 AM).",
+                                text = "Nothing waiting to send.\nWrite a note below — it stays here until the time you chose, then it appears in Received.",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = Ink.copy(alpha = 0.75f),
                                 textAlign = TextAlign.Center
                             )
                         }
                     }
-                    items(messages, key = { it.id }) { message ->
-                        val task = tasks.find { it.id == message.taskId }
-                        MessageBubble(
-                            message = message,
+                    items(scheduled, key = { it.id }) { task ->
+                        ScheduledCard(
                             task = task,
-                            onAcknowledge = { message.taskId?.let(onAcknowledge) },
-                            onComplete = { message.taskId?.let(onComplete) },
-                            onDismiss = { message.taskId?.let(onDismiss) },
+                            onEdit = { onBeginEdit(task.id) },
                             onReschedule = {
-                                rescheduleTaskId = message.taskId
+                                rescheduleTaskId = task.id
                                 showDatePicker = true
                             },
-                            onSnooze = { message.taskId?.let(onSnooze) },
-                            onEdit = { message.taskId?.let(onBeginEdit) },
-                            onDelete = { message.taskId?.let(onDelete) }
+                            onSnooze = { onSnooze(task.id) },
+                            onDelete = { onDelete(task.id) }
                         )
                     }
                 }
@@ -325,75 +310,42 @@ fun ChatScreen(
 }
 
 @Composable
-private fun MessageBubble(
-    message: ChatMessageEntity,
-    task: TaskEntity?,
-    onAcknowledge: () -> Unit,
-    onComplete: () -> Unit,
-    onDismiss: () -> Unit,
+private fun ScheduledCard(
+    task: TaskEntity,
+    onEdit: () -> Unit,
     onReschedule: () -> Unit,
     onSnooze: () -> Unit,
-    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val isReminder = message.isReminderStyle ||
-        message.kind == MessageKind.REMINDER ||
-        message.kind == MessageKind.DAYTIME_REMINDER ||
-        message.kind == MessageKind.FOLLOW_UP_UNACKED
-
-    val bubbleColor = when {
-        message.kind == MessageKind.FOLLOW_UP_UNACKED -> ReminderRed
-        isReminder -> ReminderOrange
-        message.kind == MessageKind.SYSTEM -> PastelYellow.copy(alpha = 0.85f)
-        else -> BubbleSelf
+    val dueText = remember(task.dueAtEpochMillis, task.timeWasExplicitlyChosen) {
+        val due = Instant.ofEpochMilli(task.dueAtEpochMillis).atZone(TimeDefaults.zoneId())
+        val time = if (task.timeWasExplicitlyChosen) {
+            due.toLocalTime().format(DateTimeFormatter.ofPattern("h:mm a"))
+        } else {
+            "3:00 AM"
+        }
+        "${due.toLocalDate().format(DateTimeFormatter.ofPattern("MMM d"))} · $time"
     }
-    val textColor = if (message.kind == MessageKind.SYSTEM) Ink else Foam
-    val shape = RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp)
-    val timeText = remember(message.sentAtEpochMillis) {
-        DateTimeFormatter.ofPattern("MMM d · h:mm a")
-            .withZone(TimeDefaults.zoneId())
-            .format(Instant.ofEpochMilli(message.sentAtEpochMillis))
-    }
-
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
-        AnimatedVisibility(visible = true, enter = fadeIn() + slideInVertically { it / 4 }) {
-            Column(
-                Modifier
-                    .widthIn(max = 340.dp)
-                    .clip(shape)
-                    .background(bubbleColor)
-                    .then(
-                        if (message.isUnread) Modifier.border(1.5.dp, ReminderRed, shape) else Modifier
-                    )
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-            ) {
-                Text(message.body, color = textColor, style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.height(4.dp))
-                Text(timeText, color = textColor.copy(alpha = 0.75f), style = MaterialTheme.typography.bodyMedium)
-            }
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(BubbleSelf)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(task.title, color = Foam, style = MaterialTheme.typography.bodyLarge)
+        if (task.body.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(task.body, color = Foam.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyMedium)
         }
-        if (message.requiresAck && message.taskId != null) {
-            TextButton(onClick = onAcknowledge) { Text("Acknowledged / delivery received", color = WaterBlue) }
-        }
-        if (message.requiresCompletionAnswer && message.taskId != null) {
-            Row {
-                TextButton(onClick = onComplete) { Text("Yes, completed", color = WaterBlue) }
-                TextButton(onClick = onReschedule) { Text("Not yet", color = AccentOrange) }
-            }
-        }
-        if (message.requiresReschedule && message.taskId != null) {
-            Row {
-                TextButton(onClick = onReschedule) { Text("Reschedule", color = AccentOrange) }
-                TextButton(onClick = onComplete) { Text("Complete", color = WaterBlue) }
-                TextButton(onClick = onDismiss) { Text("Dismiss", color = ReminderRed) }
-            }
-        }
-        if (task != null && !task.deleted && task.status != TaskStatus.COMPLETED && task.status != TaskStatus.DISMISSED) {
-            Row {
-                TextButton(onClick = onEdit) { Text("Edit", color = WaterBlue) }
-                TextButton(onClick = onSnooze) { Text("Snooze 10m", color = AccentOrange) }
-                TextButton(onClick = onDelete) { Text("Delete", color = ReminderRed) }
-            }
+        Spacer(Modifier.height(4.dp))
+        Text("Sends $dueText", color = Foam.copy(alpha = 0.75f), style = MaterialTheme.typography.bodyMedium)
+        Row {
+            TextButton(onClick = onEdit) { Text("Edit", color = Foam) }
+            TextButton(onClick = onReschedule) { Text("Reschedule", color = Foam) }
+            TextButton(onClick = onSnooze) { Text("Snooze 10m", color = Foam) }
+            TextButton(onClick = onDelete) { Text("Delete", color = Foam) }
         }
     }
 }

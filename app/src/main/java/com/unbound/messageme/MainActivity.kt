@@ -9,7 +9,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -17,26 +25,38 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.unbound.messageme.domain.TimeDefaults
 import com.unbound.messageme.notification.NotificationHelper
 import com.unbound.messageme.ui.MessageMeViewModel
 import com.unbound.messageme.ui.calendar.CalendarScreen
 import com.unbound.messageme.ui.chat.ChatScreen
+import com.unbound.messageme.ui.inbox.ReceivedDayScreen
+import com.unbound.messageme.ui.inbox.ReceivedMessageScreen
 import com.unbound.messageme.ui.settings.SettingsScreen
 import com.unbound.messageme.ui.theme.MessageMeTheme
 import dagger.hilt.android.AndroidEntryPoint
+import java.time.LocalDate
+
+data class OpenInboxTarget(val dateIso: String, val messageId: String)
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private var showInAppPermissionDialog by mutableStateOf(false)
     private var rewriteTaskId by mutableStateOf<String?>(null)
+    private var openInbox by mutableStateOf<OpenInboxTarget?>(null)
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
@@ -57,18 +77,16 @@ class MainActivity : ComponentActivity() {
                 else -> androidx.compose.foundation.isSystemInDarkTheme()
             }
 
-            LaunchedEffect(rewriteTaskId) {
-                val taskId = rewriteTaskId ?: return@LaunchedEffect
-                viewModel.beginEdit(taskId)
-                rewriteTaskId = null
-            }
-
             MessageMeTheme(darkTheme = dark) {
                 AppNav(
                     viewModel = viewModel,
                     systemNotificationsBlocked = !NotificationManagerCompat.from(this).areNotificationsEnabled(),
                     showPermissionDialog = showInAppPermissionDialog ||
                         viewModel.pendingPermissionPrompt.collectAsStateWithLifecycle().value,
+                    openInbox = openInbox,
+                    onOpenInboxConsumed = { openInbox = null },
+                    rewriteTaskId = rewriteTaskId,
+                    onRewriteConsumed = { rewriteTaskId = null },
                     onAllowNotifications = {
                         viewModel.markPermissionAsked()
                         showInAppPermissionDialog = false
@@ -81,9 +99,6 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-
-        // Restore alarms after process start
-        // ViewModel refresh is triggered from composition via LaunchedEffect in AppNav
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -95,10 +110,20 @@ class MainActivity : ComponentActivity() {
     private fun consumeNotificationIntent(intent: Intent?) {
         val taskId = intent?.getStringExtra(NotificationHelper.EXTRA_TASK_ID) ?: return
         val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID)
-        if (intent.action == NotificationHelper.ACTION_REWRITE) {
-            rewriteTaskId = taskId
-            if (reminderId != null) {
-                NotificationHelper.cancel(this, taskId, reminderId)
+        val messageId = intent.getStringExtra(NotificationHelper.EXTRA_MESSAGE_ID)
+        val day = intent.getStringExtra(NotificationHelper.EXTRA_DAY)
+            ?: LocalDate.now(TimeDefaults.zoneId()).toString()
+        when (intent.action) {
+            NotificationHelper.ACTION_REWRITE -> {
+                rewriteTaskId = taskId
+                if (reminderId != null) {
+                    NotificationHelper.cancel(this, taskId, reminderId)
+                }
+            }
+            else -> {
+                if (messageId != null) {
+                    openInbox = OpenInboxTarget(dateIso = day, messageId = messageId)
+                }
             }
         }
     }
@@ -120,6 +145,10 @@ private fun AppNav(
     viewModel: MessageMeViewModel,
     systemNotificationsBlocked: Boolean,
     showPermissionDialog: Boolean,
+    openInbox: OpenInboxTarget?,
+    onOpenInboxConsumed: () -> Unit,
+    rewriteTaskId: String?,
+    onRewriteConsumed: () -> Unit,
     onAllowNotifications: () -> Unit,
     onDeferNotifications: () -> Unit
 ) {
@@ -133,67 +162,196 @@ private fun AppNav(
     val lastExport by viewModel.lastExport.collectAsStateWithLifecycle()
     val notice by viewModel.notice.collectAsStateWithLifecycle()
     val editingTask by viewModel.editingTask.collectAsStateWithLifecycle()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val today = LocalDate.now(TimeDefaults.zoneId()).toString()
+    val showBottomBar = currentRoute == "scheduled" ||
+        (currentRoute?.startsWith("received/") == true && currentRoute?.contains("/message/") != true)
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         viewModel.refreshAlarms()
     }
 
-    NavHost(navController = navController, startDestination = "chat") {
-        composable("chat") {
-            ChatScreen(
-                messages = messages,
-                tasks = tasks,
-                editingTask = editingTask,
-                suggestions = viewModel.suggestions(),
-                onOpenCalendar = { navController.navigate("calendar") },
-                onOpenSettings = { navController.navigate("settings") },
-                onCreateReminder = { title, body, date, time, priority, category, recurrence ->
-                    viewModel.createReminder(title, body, date, time, priority, category, recurrence, null)
-                },
-                onSaveEdit = { taskId, title, body, date, time, priority, category, recurrence ->
-                    viewModel.editReminder(taskId, title, body, date, time, priority, category, recurrence, null)
-                },
-                onBeginEdit = viewModel::beginEdit,
-                onCancelEdit = viewModel::cancelEdit,
-                onAcknowledge = viewModel::acknowledge,
-                onComplete = viewModel::complete,
-                onDismiss = viewModel::dismiss,
-                onReschedule = viewModel::reschedule,
-                onSnooze = viewModel::snooze,
-                onDelete = viewModel::delete
-            )
+    LaunchedEffect(rewriteTaskId) {
+        val taskId = rewriteTaskId ?: return@LaunchedEffect
+        viewModel.beginEdit(taskId)
+        navController.navigate("scheduled") {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
         }
-        composable("calendar") {
-            CalendarScreen(
-                tasks = tasks,
-                completedCount = completedCount,
-                openCount = openCount,
-                onBack = { navController.popBackStack() },
-                onComplete = viewModel::complete,
-                onAcknowledge = viewModel::acknowledge,
-                onDelete = viewModel::delete,
-                onEdit = { taskId ->
-                    viewModel.beginEdit(taskId)
-                    navController.popBackStack()
+        onRewriteConsumed()
+    }
+
+    LaunchedEffect(openInbox) {
+        val target = openInbox ?: return@LaunchedEffect
+        viewModel.markMessageRead(target.messageId)
+        navController.navigate("received/${target.dateIso}") {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+        }
+        navController.navigate("received/${target.dateIso}/message/${target.messageId}")
+        onOpenInboxConsumed()
+    }
+
+    Scaffold(
+        bottomBar = {
+            if (showBottomBar) {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = currentRoute == "scheduled",
+                        onClick = {
+                            navController.navigate("scheduled") {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = { Icon(Icons.Default.Schedule, contentDescription = null) },
+                        label = { Text("Scheduled") }
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute?.startsWith("received/") == true,
+                        onClick = {
+                            navController.navigate("received/$today") {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = { Icon(Icons.Default.Inbox, contentDescription = null) },
+                        label = { Text("Received") }
+                    )
                 }
-            )
+            }
         }
-        composable("settings") {
-            SettingsScreen(
-                notificationsEnabled = notificationsEnabled,
-                systemNotificationsBlocked = systemNotificationsBlocked,
-                themeMode = themeMode,
-                firebaseConfigured = viewModel.firebaseConfigured,
-                lastExport = lastExport,
-                onBack = { navController.popBackStack() },
-                onToggleNotifications = viewModel::setNotificationsEnabled,
-                onThemeMode = viewModel::setThemeMode,
-                onExportJson = viewModel::exportJson,
-                onExportCsv = viewModel::exportCsv,
-                onExportPdf = viewModel::exportPdf,
-                onImportJson = viewModel::importJson,
-                onSyncNow = viewModel::syncNow
-            )
+    ) { padding ->
+        NavHost(
+            navController = navController,
+            startDestination = "scheduled",
+            modifier = Modifier.padding(padding)
+        ) {
+            composable("scheduled") {
+                ChatScreen(
+                    messages = messages,
+                    tasks = tasks,
+                    editingTask = editingTask,
+                    suggestions = viewModel.suggestions(),
+                    onOpenCalendar = { navController.navigate("calendar") },
+                    onOpenSettings = { navController.navigate("settings") },
+                    onCreateReminder = { title, body, date, time, priority, category, recurrence ->
+                        viewModel.createReminder(title, body, date, time, priority, category, recurrence, null)
+                    },
+                    onSaveEdit = { taskId, title, body, date, time, priority, category, recurrence ->
+                        viewModel.editReminder(taskId, title, body, date, time, priority, category, recurrence, null)
+                    },
+                    onBeginEdit = viewModel::beginEdit,
+                    onCancelEdit = viewModel::cancelEdit,
+                    onReschedule = viewModel::reschedule,
+                    onSnooze = viewModel::snooze,
+                    onDelete = viewModel::delete
+                )
+            }
+            composable(
+                "received/{date}",
+                arguments = listOf(navArgument("date") { type = NavType.StringType })
+            ) { entry ->
+                val date = LocalDate.parse(entry.arguments?.getString("date") ?: today)
+                ReceivedDayScreen(
+                    date = date,
+                    messages = messages,
+                    tasks = tasks,
+                    onPrevDay = {
+                        navController.navigate("received/${date.minusDays(1)}") {
+                            popUpTo("received/{date}") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onNextDay = {
+                        navController.navigate("received/${date.plusDays(1)}") {
+                            popUpTo("received/{date}") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onOpenMessage = { message ->
+                        viewModel.markMessageRead(message.id)
+                        navController.navigate("received/$date/message/${message.id}")
+                    },
+                    onOpenCalendar = { navController.navigate("calendar") },
+                    onOpenSettings = { navController.navigate("settings") }
+                )
+            }
+            composable(
+                "received/{date}/message/{messageId}",
+                arguments = listOf(
+                    navArgument("date") { type = NavType.StringType },
+                    navArgument("messageId") { type = NavType.StringType }
+                )
+            ) { entry ->
+                val date = LocalDate.parse(entry.arguments?.getString("date") ?: today)
+                val messageId = entry.arguments?.getString("messageId")
+                val message = messages.find { it.id == messageId }
+                val task = tasks.find { it.id == message?.taskId }
+                LaunchedEffect(messageId) {
+                    if (messageId != null) viewModel.markMessageRead(messageId)
+                }
+                ReceivedMessageScreen(
+                    date = date,
+                    message = message,
+                    task = task,
+                    onBack = { navController.popBackStack() },
+                    onAcknowledge = viewModel::acknowledge,
+                    onComplete = viewModel::complete,
+                    onDismiss = viewModel::dismiss,
+                    onReschedule = viewModel::reschedule,
+                    onSnooze = viewModel::snooze,
+                    onEdit = { taskId ->
+                        viewModel.beginEdit(taskId)
+                        navController.navigate("scheduled") {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onDelete = viewModel::delete
+                )
+            }
+            composable("calendar") {
+                CalendarScreen(
+                    tasks = tasks,
+                    completedCount = completedCount,
+                    openCount = openCount,
+                    onBack = { navController.popBackStack() },
+                    onComplete = viewModel::complete,
+                    onAcknowledge = viewModel::acknowledge,
+                    onDelete = viewModel::delete,
+                    onEdit = { taskId ->
+                        viewModel.beginEdit(taskId)
+                        navController.navigate("scheduled") {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+            }
+            composable("settings") {
+                SettingsScreen(
+                    notificationsEnabled = notificationsEnabled,
+                    systemNotificationsBlocked = systemNotificationsBlocked,
+                    themeMode = themeMode,
+                    firebaseConfigured = viewModel.firebaseConfigured,
+                    lastExport = lastExport,
+                    onBack = { navController.popBackStack() },
+                    onToggleNotifications = viewModel::setNotificationsEnabled,
+                    onThemeMode = viewModel::setThemeMode,
+                    onExportJson = viewModel::exportJson,
+                    onExportCsv = viewModel::exportCsv,
+                    onExportPdf = viewModel::exportPdf,
+                    onImportJson = viewModel::importJson,
+                    onSyncNow = viewModel::syncNow
+                )
+            }
         }
     }
 

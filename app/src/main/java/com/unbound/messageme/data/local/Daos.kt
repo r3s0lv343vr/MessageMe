@@ -58,6 +58,9 @@ interface ChatMessageDao {
     @Query("SELECT * FROM chat_messages WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): ChatMessageEntity?
 
+    @Query("UPDATE chat_messages SET isUnread = 0 WHERE id = :id")
+    suspend fun markRead(id: String)
+
     @Query("UPDATE chat_messages SET isUnread = 0 WHERE taskId = :taskId AND isUnread = 1")
     suspend fun markTaskMessagesRead(taskId: String)
 

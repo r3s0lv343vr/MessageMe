@@ -21,13 +21,16 @@ class SmokeNavigationTest {
 
     @Test
     fun opensCalendarFromHamburger() {
-        composeRule.onNodeWithText("MessageMe").assertExists()
+        composeRule.onNodeWithText("Scheduled").assertExists()
         composeRule.onNodeWithContentDescription("Todo calendar").performClick()
         composeRule.onNodeWithText("Todo calendar").assertExists()
     }
 
     @Test
-    fun createsReminderFromComposer() {
+    fun opensReceivedTab() {
+        composeRule.onNodeWithText("Received").performClick()
+        composeRule.onNodeWithText("No messages received on this day.").assertExists()
+    }
         composeRule.onNodeWithText("Title").performTextInput("Walk the dog")
         composeRule.onNodeWithContentDescription("Send").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {

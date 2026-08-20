@@ -15,6 +15,7 @@ import com.unbound.messageme.R
 import com.unbound.messageme.data.local.ReminderType
 import com.unbound.messageme.data.local.TaskEntity
 import com.unbound.messageme.domain.NotificationCopy
+import com.unbound.messageme.domain.TimeDefaults
 
 object NotificationHelper {
     const val CHANNEL_ID = "messages_from_you"
@@ -24,6 +25,8 @@ object NotificationHelper {
     const val ACTION_OPEN = "com.unbound.messageme.ACTION_OPEN"
     const val EXTRA_TASK_ID = "extra_task_id"
     const val EXTRA_REMINDER_ID = "extra_reminder_id"
+    const val EXTRA_MESSAGE_ID = "extra_message_id"
+    const val EXTRA_DAY = "extra_day"
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -47,7 +50,8 @@ object NotificationHelper {
         context: Context,
         task: TaskEntity,
         reminderId: String,
-        type: ReminderType
+        type: ReminderType,
+        messageId: String
     ) {
         ensureChannel(context)
         val note = NotificationCopy.personalNote(task)
@@ -55,16 +59,23 @@ object NotificationHelper {
             .setName(NotificationCopy.SENDER)
             .setImportant(true)
             .build()
+        val day = java.time.Instant.ofEpochMilli(TimeDefaults.nowMillis())
+            .atZone(TimeDefaults.zoneId())
+            .toLocalDate()
+            .toString()
 
         val openIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(EXTRA_TASK_ID, task.id)
             putExtra(EXTRA_REMINDER_ID, reminderId)
+            putExtra(EXTRA_MESSAGE_ID, messageId)
+            putExtra(EXTRA_DAY, day)
             action = ACTION_OPEN
         }
+        val requestCode = NotificationCopy.notificationId(task.id, reminderId)
         val contentPending = PendingIntent.getActivity(
             context,
-            task.id.hashCode(),
+            requestCode,
             openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

@@ -51,6 +51,10 @@ class MessageRepository @Inject constructor(
     fun observeCompletedCount(): Flow<Int> = taskDao.observeCompletedCount()
     fun observeOpenCount(): Flow<Int> = taskDao.observeOpenCount()
 
+    suspend fun markMessageRead(messageId: String) {
+        messageDao.markRead(messageId)
+    }
+
     suspend fun createReminder(
         title: String,
         body: String,
@@ -318,9 +322,10 @@ class MessageRepository @Inject constructor(
 
         val now = TimeDefaults.nowMillis()
         val content = messageFor(reminder.type, task)
+        val messageId = UUID.randomUUID().toString()
         messageDao.upsert(
             ChatMessageEntity(
-                id = UUID.randomUUID().toString(),
+                id = messageId,
                 taskId = task.id,
                 body = content.body,
                 kind = content.kind,
@@ -353,7 +358,7 @@ class MessageRepository @Inject constructor(
                 status = updatedTask.status
             )
         ) {
-            scheduler.notifyUser(updatedTask, reminder)
+            scheduler.notifyUser(updatedTask, reminder, messageId)
         }
     }
 

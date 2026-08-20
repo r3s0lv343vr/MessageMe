@@ -33,11 +33,11 @@ You should see the **MessageMe** chat screen.
 Firebase (`app/google-services.json`) is **not** required to open, create, edit, or delete reminders offline.
 
 ### First-run smoke
-1. Title `Walk the dog` → Send (time optional; after 3:00 AM local, the default becomes **tomorrow 3:00 AM**).
-2. Allow notifications, or tap **Not Now** — the reminder still saves.
-3. Set time a couple of minutes ahead (use the **emulator** clock, top-left) → wait: an orange ✉️ message should appear in chat at that time.
+1. **Scheduled** tab: Title `Walk the dog` → Send (time optional; after 3:00 AM local, the default becomes **tomorrow 3:00 AM**).
+2. Allow notifications, or tap **Not Now** — the reminder stays on Scheduled until due.
+3. Set time a couple of minutes ahead (use the **emulator** clock, top-left) → wait, then open **Received**: the message for that day should be there. Tap it to open only that note; Back returns to that day’s list.
 4. Hamburger → calendar tile colour + day list.
-5. Chat: **Edit**, **Snooze 10m**, **Delete**.
+5. Scheduled: **Edit**, **Snooze 10m**, **Delete**.
 6. Settings → internal notification toggle, JSON/CSV/PDF export.
 
 ---

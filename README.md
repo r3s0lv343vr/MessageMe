@@ -1,6 +1,6 @@
 # MessageMe
 
-Android app that lets you message yourself reminders for tasks. Offline-first with Room, exact AlarmManager scheduling, chat-style Compose UI, colour-coded calendar, and optional Firebase Auth + Firestore sync.
+Android app that lets you message yourself reminders for tasks. Offline-first with Room, exact AlarmManager scheduling, **Scheduled** and **Received** pages, colour-coded calendar, and optional Firebase Auth + Firestore sync.
 
 **Application ID:** `com.unbound.messageme`  
 **Min SDK:** 24 · **Target / Compile SDK:** 36  
@@ -104,7 +104,8 @@ Release-ready bundle (debug signing only until a keystore is supplied):
 ### Reminder cadence
 
 - Pre-task: 3h, 1h, 30m, 5m  
-- **At the chosen time:** the personal message is delivered in chat and as a lock-screen notification.  
+- **At the chosen time:** the personal message is delivered on the **Received** page and as a lock-screen notification. Tapping the notification opens only that message; Back shows that day’s received list.  
+- **Scheduled** holds notes still waiting to send. After delivery they leave Scheduled and appear under Received for that day.  
 - Same-day messages are allowed. If the chosen clock time already passed today, the reminder is sent immediately instead of showing an error. Dates before today are blocked.  
 - If no time chosen: due **3:00 AM** local + daytime envelope messages at **8:00, 10:00, 15:00**. If 3:00 AM on the chosen day already passed, the default rolls to **the next morning**.  
 - Unacked follow-ups: +30m, +90m, +180m after due → shelve as unacknowledged  
@@ -121,7 +122,8 @@ Release-ready bundle (debug signing only until a keystore is supplied):
 - [ ] Create reminder with selected time (including later today, and a time that already passed today)  
 - [ ] Create reminder without time → 3:00 AM assigned (next morning if 3:00 AM already passed)  
 - [ ] Edit, snooze, and delete a reminder from chat  
-- [ ] Create reminder a few minutes ahead → orange ✉️ message appears at that time (allow notifications if prompted)  
+- [ ] Create reminder a few minutes ahead → it sits on **Scheduled**, then appears on **Received** at that time  
+- [ ] Tap the notification → only that message; Back → that day’s Received list  
 - [ ] Internal notification toggle pauses delivery  
 - [ ] System-blocked notifications show Settings CTA  
 - [ ] Restart app / reboot → reminders rescheduled  

@@ -34,6 +34,7 @@ class UnreadLetterWidgetReceiver : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
+        UnreadLetterViews.applyPlaceholder(context, appWidgetManager, appWidgetIds)
         val pending = goAsync()
         widgetScope.launch {
             try {
@@ -46,6 +47,19 @@ class UnreadLetterWidgetReceiver : AppWidgetProvider() {
 }
 
 internal object UnreadLetterViews {
+    fun applyPlaceholder(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray
+    ) {
+        val empty = UnreadLetterSnapshot(
+            unreadCount = 0,
+            preview = UnreadLetterLogic.EMPTY_PREVIEW
+        )
+        appWidgetIds.forEach { id ->
+            appWidgetManager.updateAppWidget(id, remoteViews(context, empty, id))
+        }
+    }
     suspend fun push(context: Context, appWidgetIds: IntArray? = null) {
         val manager = AppWidgetManager.getInstance(context)
         val ids = appWidgetIds ?: manager.getAppWidgetIds(

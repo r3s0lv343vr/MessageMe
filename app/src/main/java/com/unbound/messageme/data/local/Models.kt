@@ -55,5 +55,7 @@ enum class CalendarDayStatus {
     HAS_PENDING,
     COMPLETED,
     OVERDUE,
-    MIXED
+    MIXED,
+    UNOPENED,
+    ACKNOWLEDGED_UNFINISHED
 }

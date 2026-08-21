@@ -38,6 +38,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.unbound.messageme.domain.InboxLogic
 import com.unbound.messageme.domain.TimeDefaults
 import com.unbound.messageme.notification.NotificationHelper
 import com.unbound.messageme.ui.MessageMeViewModel
@@ -166,8 +167,6 @@ private fun AppNav(
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
-    val completedCount by viewModel.completedCount.collectAsStateWithLifecycle()
-    val openCount by viewModel.openCount.collectAsStateWithLifecycle()
     val lastExport by viewModel.lastExport.collectAsStateWithLifecycle()
     val envelopeHour by viewModel.envelopeHour.collectAsStateWithLifecycle()
     val seenEnvelopeHint by viewModel.seenEnvelopeHint.collectAsStateWithLifecycle()
@@ -343,8 +342,7 @@ private fun AppNav(
             composable("calendar") {
                 CalendarScreen(
                     tasks = tasks,
-                    completedCount = completedCount,
-                    openCount = openCount,
+                    messages = messages,
                     onBack = { navController.popBackStack() },
                     onComplete = viewModel::complete,
                     onAcknowledge = viewModel::acknowledge,
@@ -356,6 +354,15 @@ private fun AppNav(
                             launchSingleTop = true
                             restoreState = true
                         }
+                    },
+                    onOpenLetter = { message ->
+                        viewModel.markMessageRead(message.id)
+                        val day = InboxLogic.dayOf(message).toString()
+                        navController.navigate("received/$day") {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                        }
+                        navController.navigate("received/$day/message/${message.id}")
                     }
                 )
             }

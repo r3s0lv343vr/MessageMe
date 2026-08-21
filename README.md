@@ -114,7 +114,7 @@ Release-ready bundle (debug signing only until a keystore is supplied):
 
 ### Calendar colours
 
-- Free: blue · Pending: orange · Completed: green · Past due: red · Mixed day: green/orange split
+- Free: blue · Pending: orange · Finished: green · Still waiting: red · Unopened letter: dusty coral · Acknowledged, not finished: quiet gold · Mixed day: green/orange split
 
 ---
 
@@ -131,7 +131,7 @@ Release-ready bundle (debug signing only until a keystore is supplied):
 - [ ] Restart app / reboot → reminders rescheduled  
 - [ ] Offline create/edit works  
 - [ ] With Firebase configured: sync after reconnect  
-- [ ] Calendar colour coding + day task list  
+- [ ] Calendar: Week of unopened mail, unopened / not-finished tiles, no streak copy  
 - [ ] Acknowledge / complete / dismiss / reschedule in chat  
 - [ ] Export JSON / CSV / PDF and restore JSON  
 

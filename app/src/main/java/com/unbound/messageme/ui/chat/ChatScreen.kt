@@ -68,6 +68,7 @@ import com.unbound.messageme.data.local.Priority
 import com.unbound.messageme.data.local.Recurrence
 import com.unbound.messageme.data.local.TaskEntity
 import com.unbound.messageme.domain.AiScheduleSuggestions
+import com.unbound.messageme.domain.EnvelopeHour
 import com.unbound.messageme.domain.InboxLogic
 import com.unbound.messageme.domain.TimeDefaults
 import com.unbound.messageme.ui.components.WatercolorBackground
@@ -98,7 +99,10 @@ fun ChatScreen(
     onCancelEdit: () -> Unit,
     onReschedule: (String, LocalDate, LocalTime?) -> Unit,
     onSnooze: (String) -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    envelopeHour: EnvelopeHour = EnvelopeHour.DEFAULT,
+    showEnvelopeHint: Boolean = false,
+    onDismissEnvelopeHint: () -> Unit = {}
 ) {
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
@@ -172,6 +176,22 @@ fun ChatScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
+                if (showEnvelopeHint) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            "Skip the clock to send an overnight letter. It arrives at your envelope hour. Change that hour in Settings.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Ink.copy(alpha = 0.8f)
+                        )
+                        TextButton(onClick = onDismissEnvelopeHint) {
+                            Text("Got it")
+                        }
+                    }
+                }
                 if (!letterOnHome) {
                     Button(
                         onClick = { UnreadLetterPin.requestPin(context) },
@@ -251,6 +271,7 @@ fun ChatScreen(
                     onBody = { body = it },
                     selectedDate = selectedDate,
                     selectedTime = selectedTime,
+                    envelopeHour = envelopeHour,
                     priority = priority,
                     category = category,
                     recurrence = recurrence,
@@ -314,8 +335,8 @@ fun ChatScreen(
 
     if (showTimePicker) {
         val timeState = rememberTimePickerState(
-            initialHour = selectedTime?.hour ?: TimeDefaults.DEFAULT_HOUR,
-            initialMinute = selectedTime?.minute ?: TimeDefaults.DEFAULT_MINUTE
+            initialHour = selectedTime?.hour ?: envelopeHour.hour,
+            initialMinute = selectedTime?.minute ?: envelopeHour.minute
         )
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
@@ -326,7 +347,7 @@ fun ChatScreen(
                 }) { Text("OK") }
             },
             dismissButton = { TextButton(onClick = { showTimePicker = false }) { Text("Cancel") } },
-            title = { Text("Task time") },
+            title = { Text("When should this arrive?") },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     TimePicker(state = timeState)
@@ -335,7 +356,7 @@ fun ChatScreen(
                         selectedTime = null
                         showTimePicker = false
                     }) {
-                        Text("Use 3:00 AM default")
+                        Text("Send as overnight letter")
                     }
                 }
             }
@@ -356,7 +377,7 @@ private fun ScheduledCard(
         val time = if (task.timeWasExplicitlyChosen) {
             due.toLocalTime().format(DateTimeFormatter.ofPattern("h:mm a"))
         } else {
-            "3:00 AM"
+            "Overnight letter · ${due.toLocalTime().format(DateTimeFormatter.ofPattern("h:mm a"))}"
         }
         "${due.toLocalDate().format(DateTimeFormatter.ofPattern("MMM d"))} · $time"
     }
@@ -408,6 +429,7 @@ private fun Composer(
     onBody: (String) -> Unit,
     selectedDate: LocalDate,
     selectedTime: LocalTime?,
+    envelopeHour: EnvelopeHour,
     priority: Priority,
     category: String,
     recurrence: Recurrence,
@@ -424,7 +446,7 @@ private fun Composer(
     var showCustomCategory by remember { mutableStateOf(false) }
     var customCategory by remember { mutableStateOf("") }
     val dateLabel = selectedDate.format(DateTimeFormatter.ofPattern("MMM d"))
-    val timeLabel = selectedTime?.format(DateTimeFormatter.ofPattern("h:mm a")) ?: "3:00 AM"
+    val timeLabel = selectedTime?.format(DateTimeFormatter.ofPattern("h:mm a")) ?: "Overnight"
 
     Column(
         Modifier
@@ -499,6 +521,14 @@ private fun Composer(
                 DropdownMenuItem(text = { Text("Weekly") }, onClick = { onRecurrence(Recurrence.WEEKLY); openMenu = null })
                 DropdownMenuItem(text = { Text("Monthly") }, onClick = { onRecurrence(Recurrence.MONTHLY); openMenu = null })
             }
+        }
+        if (selectedTime == null) {
+            Text(
+                EnvelopeHour.overnightCaption(envelopeHour),
+                color = Ink.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
         Spacer(Modifier.height(6.dp))
         OutlinedTextField(

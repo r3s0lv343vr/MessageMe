@@ -107,7 +107,8 @@ Release-ready bundle (debug signing only until a keystore is supplied):
 - **At the chosen time:** the personal message is delivered on the **Received** page and as a lock-screen notification. Tapping the notification opens only that message; Back shows that day’s received list.  
 - **Scheduled** holds notes still waiting to send. After delivery they leave Scheduled and appear under Received for that day.  
 - Same-day messages are allowed. If the chosen clock time already passed today, the reminder is sent immediately instead of showing an error. Dates before today are blocked.  
-- If no time chosen: due **3:00 AM** local + daytime envelope messages at **8:00, 10:00, 15:00**. If 3:00 AM on the chosen day already passed, the default rolls to **the next morning**.  
+- If no time chosen: **overnight letter** at the user’s **envelope hour** (default 3:00 AM, changeable in Settings). If that hour already passed on the chosen day, it rolls to **the next morning**.  
+- Skipping time does **not** add extra 8:00 / 10:00 / 15:00 check-in pings.
 - Unacked follow-ups: +30m, +90m, +180m after due → shelve as unacknowledged  
 - After ack: completion check +1h, retry +1h, then reschedule / dismiss / complete
 
@@ -120,7 +121,7 @@ Release-ready bundle (debug signing only until a keystore is supplied):
 ## Manual smoke checklist
 
 - [ ] Create reminder with selected time (including later today, and a time that already passed today)  
-- [ ] Create reminder without time → 3:00 AM assigned (next morning if 3:00 AM already passed)  
+- [ ] Create reminder without time → overnight letter at envelope hour (next morning if that hour already passed)  
 - [ ] Edit, snooze, and delete a reminder from chat  
 - [ ] Create reminder a few minutes ahead → it sits on **Scheduled**, then appears on **Received** at that time  
 - [ ] Tap the notification → only that message; Back → that day’s Received list  

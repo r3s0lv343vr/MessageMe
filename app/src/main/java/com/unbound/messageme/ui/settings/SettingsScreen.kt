@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -24,8 +25,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.unbound.messageme.R
+import com.unbound.messageme.domain.EnvelopeHour
 import com.unbound.messageme.ui.components.WatercolorBackground
 import com.unbound.messageme.ui.theme.Ink
 import com.unbound.messageme.widget.UnreadLetterPin
@@ -49,11 +54,13 @@ fun SettingsScreen(
     notificationsEnabled: Boolean,
     systemNotificationsBlocked: Boolean,
     themeMode: String,
+    envelopeHour: EnvelopeHour,
     firebaseConfigured: Boolean,
     lastExport: File?,
     onBack: () -> Unit,
     onToggleNotifications: (Boolean) -> Unit,
     onThemeMode: (String) -> Unit,
+    onEnvelopeHour: (Int, Int) -> Unit,
     onExportJson: () -> Unit,
     onExportCsv: () -> Unit,
     onExportPdf: () -> Unit,
@@ -62,6 +69,7 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var importText by remember { mutableStateOf("") }
+    var showEnvelopePicker by remember { mutableStateOf(false) }
 
     WatercolorBackground {
         Scaffold(
@@ -111,6 +119,17 @@ fun SettingsScreen(
                         }
                         context.startActivity(intent)
                     }) { Text("Open Settings") }
+                }
+
+                Spacer(Modifier.height(8.dp))
+                Text("Envelope hour", style = MaterialTheme.typography.titleLarge, color = Ink)
+                Text(
+                    "When overnight letters arrive if you don’t pick a time.",
+                    color = Ink.copy(alpha = 0.75f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Button(onClick = { showEnvelopePicker = true }) {
+                    Text(envelopeHour.clockLabel())
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -170,5 +189,28 @@ fun SettingsScreen(
                 Button(onClick = onSyncNow, enabled = firebaseConfigured) { Text("Sync now") }
             }
         }
+    }
+
+    if (showEnvelopePicker) {
+        val timeState = rememberTimePickerState(
+            initialHour = envelopeHour.hour,
+            initialMinute = envelopeHour.minute
+        )
+        AlertDialog(
+            onDismissRequest = { showEnvelopePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    onEnvelopeHour(timeState.hour, timeState.minute)
+                    showEnvelopePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEnvelopePicker = false }) { Text("Cancel") }
+            },
+            title = { Text("Envelope hour") },
+            text = {
+                TimePicker(state = timeState)
+            }
+        )
     }
 }

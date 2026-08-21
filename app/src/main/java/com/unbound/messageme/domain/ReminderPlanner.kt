@@ -2,8 +2,6 @@ package com.unbound.messageme.domain
 
 import com.unbound.messageme.data.local.ReminderType
 import com.unbound.messageme.data.local.ScheduledReminderEntity
-import java.time.Instant
-import java.time.LocalTime
 import java.util.UUID
 
 object ReminderPlanner {
@@ -14,6 +12,7 @@ object ReminderPlanner {
         ReminderType.T_MINUS_5M to 5L
     )
 
+    @Suppress("UNUSED_PARAMETER")
     fun planForTask(
         taskId: String,
         dueAtEpochMillis: Long,
@@ -32,27 +31,6 @@ object ReminderPlanner {
         // The personal message itself, at the time the user chose.
         if (dueAtEpochMillis > nowEpochMillis) {
             out += reminder(taskId, ReminderType.AT_DUE, dueAtEpochMillis)
-        }
-
-        if (!timeWasExplicitlyChosen) {
-            val dueDate = Instant.ofEpochMilli(dueAtEpochMillis)
-                .atZone(TimeDefaults.zoneId())
-                .toLocalDate()
-            TimeDefaults.DAYTIME_REMINDER_HOURS.zip(
-                listOf(
-                    ReminderType.DAYTIME_8AM,
-                    ReminderType.DAYTIME_10AM,
-                    ReminderType.DAYTIME_3PM
-                )
-            ).forEach { (hour, type) ->
-                val trigger = dueDate.atTime(LocalTime.of(hour, 0))
-                    .atZone(TimeDefaults.zoneId())
-                    .toInstant()
-                    .toEpochMilli()
-                if (trigger > nowEpochMillis) {
-                    out += reminder(taskId, type, trigger)
-                }
-            }
         }
 
         TimeDefaults.UNACKED_OFFSETS_AFTER_TASK_MINUTES.zip(

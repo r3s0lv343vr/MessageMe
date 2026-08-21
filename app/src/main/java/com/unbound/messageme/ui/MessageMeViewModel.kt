@@ -11,6 +11,7 @@ import com.unbound.messageme.data.preferences.UserPreferences
 import com.unbound.messageme.data.repository.MessageRepository
 import com.unbound.messageme.data.sync.CloudSync
 import com.unbound.messageme.domain.AiScheduleSuggestions
+import com.unbound.messageme.domain.EnvelopeHour
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +53,12 @@ class MessageMeViewModel @Inject constructor(
 
     val themeMode = preferences.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "system")
+
+    val envelopeHour = preferences.envelopeHour
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EnvelopeHour.DEFAULT)
+
+    val seenEnvelopeHint = preferences.seenEnvelopeHint
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val hasAskedPermission = preferences.hasAskedNotificationPermission
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -96,6 +103,7 @@ class MessageMeViewModel @Inject constructor(
             repository.createReminder(title, body, date, time, priority, category, recurrence, customDays)
                 .onSuccess {
                     _notice.value = UiNotice("Reminder scheduled")
+                    if (time == null) preferences.setSeenEnvelopeHint(true)
                     maybePromptNotifications()
                 }
                 .onFailure { _notice.value = UiNotice(it.message ?: "Failed", isError = true) }
@@ -144,6 +152,14 @@ class MessageMeViewModel @Inject constructor(
     }
 
     fun setThemeMode(mode: String) = viewModelScope.launch { preferences.setThemeMode(mode) }
+
+    fun setEnvelopeHour(hour: Int, minute: Int) = viewModelScope.launch {
+        repository.setEnvelopeHour(hour, minute)
+    }
+
+    fun markEnvelopeHintSeen() = viewModelScope.launch {
+        preferences.setSeenEnvelopeHint(true)
+    }
 
     fun markPermissionAsked() = viewModelScope.launch {
         preferences.setAskedNotificationPermission(true)

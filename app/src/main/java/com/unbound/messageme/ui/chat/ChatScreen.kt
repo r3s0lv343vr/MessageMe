@@ -356,7 +356,7 @@ fun ChatScreen(
                         selectedTime = null
                         showTimePicker = false
                     }) {
-                        Text("Send as overnight letter")
+                        Text("Send an Overnight Letter")
                     }
                 }
             }
@@ -446,7 +446,8 @@ private fun Composer(
     var showCustomCategory by remember { mutableStateOf(false) }
     var customCategory by remember { mutableStateOf("") }
     val dateLabel = selectedDate.format(DateTimeFormatter.ofPattern("MMM d"))
-    val timeLabel = selectedTime?.format(DateTimeFormatter.ofPattern("h:mm a")) ?: "Overnight"
+    val timeLabel = selectedTime?.format(DateTimeFormatter.ofPattern("h:mm a"))
+        ?: envelopeHour.clockLabel()
 
     Column(
         Modifier

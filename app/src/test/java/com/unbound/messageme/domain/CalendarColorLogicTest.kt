@@ -2,6 +2,8 @@ package com.unbound.messageme.domain
 
 import com.google.common.truth.Truth.assertThat
 import com.unbound.messageme.data.local.CalendarDayStatus
+import com.unbound.messageme.data.local.ChatMessageEntity
+import com.unbound.messageme.data.local.MessageKind
 import com.unbound.messageme.data.local.TaskEntity
 import com.unbound.messageme.data.local.TaskStatus
 import org.junit.Test
@@ -51,6 +53,32 @@ class CalendarColorLogicTest {
         )
         assertThat(CalendarColorLogic.statusForDay(today, tasks, today, zone))
             .isEqualTo(CalendarDayStatus.MIXED)
+    }
+
+    @Test
+    fun unopenedLettersPaintTheDay() {
+        val messages = listOf(
+            ChatMessageEntity(
+                id = "m1",
+                taskId = "t",
+                body = "hello",
+                kind = MessageKind.REMINDER,
+                sentAtEpochMillis = today.atStartOfDay().toInstant(zone).toEpochMilli(),
+                isReminderStyle = true,
+                isUnread = true
+            )
+        )
+        val tasks = listOf(task(today, TaskStatus.PENDING).copy(id = "t"))
+        assertThat(CalendarColorLogic.statusForDay(today, tasks, today, zone, messages))
+            .isEqualTo(CalendarDayStatus.UNOPENED)
+    }
+
+    @Test
+    fun acknowledgedUnfinishedIsNotOverdueRed() {
+        val past = today.minusDays(1)
+        val tasks = listOf(task(past, TaskStatus.ACKNOWLEDGED))
+        assertThat(CalendarColorLogic.statusForDay(past, tasks, today, zone))
+            .isEqualTo(CalendarDayStatus.ACKNOWLEDGED_UNFINISHED)
     }
 
     @Test

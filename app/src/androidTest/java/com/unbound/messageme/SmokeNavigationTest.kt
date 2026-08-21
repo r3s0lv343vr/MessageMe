@@ -23,7 +23,7 @@ class SmokeNavigationTest {
     fun opensCalendarFromHamburger() {
         composeRule.onNodeWithText("Scheduled").assertExists()
         composeRule.onNodeWithContentDescription("Todo calendar").performClick()
-        composeRule.onNodeWithText("Todo calendar").assertExists()
+        composeRule.onNodeWithText("Calendar").assertExists()
     }
 
     @Test

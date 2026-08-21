@@ -44,17 +44,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.unbound.messageme.data.local.CalendarDayStatus
+import com.unbound.messageme.data.local.ChatMessageEntity
 import com.unbound.messageme.data.local.TaskEntity
 import com.unbound.messageme.data.local.TaskStatus
 import com.unbound.messageme.domain.CalendarColorLogic
+import com.unbound.messageme.domain.NotificationCopy
+import com.unbound.messageme.domain.SelfHonestyLogic
 import com.unbound.messageme.domain.TimeDefaults
 import com.unbound.messageme.ui.components.WatercolorBackground
+import com.unbound.messageme.ui.theme.DayAcknowledged
 import com.unbound.messageme.ui.theme.DayCompleted
 import com.unbound.messageme.ui.theme.DayFree
 import com.unbound.messageme.ui.theme.DayMixedBottom
 import com.unbound.messageme.ui.theme.DayMixedTop
 import com.unbound.messageme.ui.theme.DayOverdue
 import com.unbound.messageme.ui.theme.DayPending
+import com.unbound.messageme.ui.theme.DayUnopened
 import com.unbound.messageme.ui.theme.Foam
 import com.unbound.messageme.ui.theme.Ink
 import com.unbound.messageme.ui.theme.WaterBlue
@@ -72,38 +77,50 @@ private enum class CalendarMode { MONTH, WEEK, DAY }
 @Composable
 fun CalendarScreen(
     tasks: List<TaskEntity>,
-    completedCount: Int,
-    openCount: Int,
+    messages: List<ChatMessageEntity>,
     onBack: () -> Unit,
     onComplete: (String) -> Unit,
     onAcknowledge: (String) -> Unit,
     onDelete: (String) -> Unit,
-    onEdit: (String) -> Unit
+    onEdit: (String) -> Unit,
+    onOpenLetter: (ChatMessageEntity) -> Unit
 ) {
     var month by remember { mutableStateOf(YearMonth.now(TimeDefaults.zoneId())) }
     var selectedDate by remember { mutableStateOf(LocalDate.now(TimeDefaults.zoneId())) }
     var mode by remember { mutableStateOf(CalendarMode.MONTH) }
     var filter by remember { mutableStateOf("all") }
 
+    val weekHonesty = remember(messages, tasks, selectedDate) {
+        SelfHonestyLogic.weekHonesty(messages, tasks, selectedDate)
+    }
+    val unopenedToday = remember(messages, tasks, selectedDate) {
+        SelfHonestyLogic.unopenedLetters(messages, tasks, selectedDate)
+    }
+    val ackedToday = remember(messages, tasks, selectedDate) {
+        SelfHonestyLogic.acknowledgedUnfinished(tasks, selectedDate)
+    }
     val dayTasks = remember(tasks, selectedDate, filter) {
         tasks.filter {
             Instant.ofEpochMilli(it.dueAtEpochMillis)
                 .atZone(TimeDefaults.zoneId())
                 .toLocalDate() == selectedDate &&
                 when (filter) {
-                    "open" -> it.status != TaskStatus.COMPLETED && it.status != TaskStatus.DISMISSED
+                    "acked" -> it.status == TaskStatus.ACKNOWLEDGED
                     "done" -> it.status == TaskStatus.COMPLETED
+                    "unopened" -> false
                     else -> true
                 }
         }.sortedBy { it.dueAtEpochMillis }
     }
+    val lettersToShow = if (filter == "all" || filter == "unopened") unopenedToday else emptyList()
+    val tasksToShow = if (filter == "unopened") emptyList() else dayTasks
 
     WatercolorBackground {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { Text("Todo calendar", color = Ink) },
+                    title = { Text("Calendar", color = Ink) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -120,10 +137,16 @@ fun CalendarScreen(
                     .padding(horizontal = 16.dp)
             ) {
                 Text(
-                    "Open $openCount · Completed $completedCount",
+                    SelfHonestyLogic.WEEK_HEADLINE,
+                    color = Ink,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    weekHonesty.body(),
                     color = Ink.copy(alpha = 0.75f),
                     style = MaterialTheme.typography.bodyMedium
                 )
+                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(CalendarMode.MONTH, CalendarMode.WEEK, CalendarMode.DAY).forEach { m ->
                         FilterChip(
@@ -138,9 +161,9 @@ fun CalendarScreen(
                     CalendarMode.MONTH -> {
                         MonthHeader(month, { month = month.minusMonths(1) }, { month = month.plusMonths(1) })
                         WeekdayHeader()
-                        MonthGrid(month, tasks, selectedDate) { selectedDate = it }
+                        MonthGrid(month, tasks, messages, selectedDate) { selectedDate = it }
                     }
-                    CalendarMode.WEEK -> WeekStrip(selectedDate, tasks) { selectedDate = it }
+                    CalendarMode.WEEK -> WeekStrip(selectedDate, tasks, messages) { selectedDate = it }
                     CalendarMode.DAY -> Text(
                         selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d yyyy")),
                         style = MaterialTheme.typography.headlineMedium,
@@ -152,15 +175,27 @@ fun CalendarScreen(
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = filter == "all", onClick = { filter = "all" }, label = { Text("All") })
-                    FilterChip(selected = filter == "open", onClick = { filter = "open" }, label = { Text("Open") })
+                    FilterChip(selected = filter == "unopened", onClick = { filter = "unopened" }, label = { Text("Unopened") })
+                    FilterChip(selected = filter == "acked", onClick = { filter = "acked" }, label = { Text("Not finished") })
                     FilterChip(selected = filter == "done", onClick = { filter = "done" }, label = { Text("Done") })
                 }
                 Spacer(Modifier.height(8.dp))
-                if (dayTasks.isEmpty()) {
-                    Text("No tasks on this day.", color = Ink.copy(alpha = 0.7f))
+                if (lettersToShow.isEmpty() && tasksToShow.isEmpty()) {
+                    Text(
+                        when (filter) {
+                            "unopened" -> "No unopened letters on this day."
+                            "acked" -> "Nothing acknowledged and unfinished on this day."
+                            "done" -> "Nothing finished on this day."
+                            else -> "No mail on this day."
+                        },
+                        color = Ink.copy(alpha = 0.7f)
+                    )
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(dayTasks, key = { it.id }) { task ->
+                        items(lettersToShow, key = { "letter-${it.id}" }) { letter ->
+                            UnopenedLetterRow(letter, tasks) { onOpenLetter(letter) }
+                        }
+                        items(tasksToShow, key = { it.id }) { task ->
                             TaskRow(
                                 task,
                                 { onComplete(task.id) },
@@ -202,6 +237,7 @@ private fun WeekdayHeader() {
 private fun MonthGrid(
     month: YearMonth,
     tasks: List<TaskEntity>,
+    messages: List<ChatMessageEntity>,
     selectedDate: LocalDate,
     onSelect: (LocalDate) -> Unit
 ) {
@@ -224,7 +260,7 @@ private fun MonthGrid(
                         contentAlignment = Alignment.Center
                     ) {
                         if (date != null) {
-                            val status = CalendarColorLogic.statusForDay(date, tasks)
+                            val status = CalendarColorLogic.statusForDay(date, tasks, messages = messages)
                             DayCell(date.dayOfMonth, status, date == selectedDate) { onSelect(date) }
                         }
                     }
@@ -235,12 +271,17 @@ private fun MonthGrid(
 }
 
 @Composable
-private fun WeekStrip(selected: LocalDate, tasks: List<TaskEntity>, onSelect: (LocalDate) -> Unit) {
-    val start = selected.minusDays(((selected.dayOfWeek.value % 7).toLong()))
+private fun WeekStrip(
+    selected: LocalDate,
+    tasks: List<TaskEntity>,
+    messages: List<ChatMessageEntity>,
+    onSelect: (LocalDate) -> Unit
+) {
+    val start = SelfHonestyLogic.weekStartSunday(selected)
     Row(Modifier.fillMaxWidth()) {
         (0L..6L).forEach { offset ->
             val date = start.plusDays(offset)
-            val status = CalendarColorLogic.statusForDay(date, tasks)
+            val status = CalendarColorLogic.statusForDay(date, tasks, messages = messages)
             Box(Modifier.weight(1f).aspectRatio(1f).padding(3.dp)) {
                 DayCell(date.dayOfMonth, status, date == selected) { onSelect(date) }
             }
@@ -256,6 +297,8 @@ private fun DayCell(day: Int, status: CalendarDayStatus, selected: Boolean, onCl
         CalendarDayStatus.HAS_PENDING -> Brush.linearGradient(listOf(DayPending, DayPending))
         CalendarDayStatus.COMPLETED -> Brush.linearGradient(listOf(DayCompleted, DayCompleted))
         CalendarDayStatus.OVERDUE -> Brush.linearGradient(listOf(DayOverdue, DayOverdue))
+        CalendarDayStatus.UNOPENED -> Brush.linearGradient(listOf(DayUnopened, DayUnopened))
+        CalendarDayStatus.ACKNOWLEDGED_UNFINISHED -> Brush.linearGradient(listOf(DayAcknowledged, DayAcknowledged))
     }
     Box(
         Modifier
@@ -273,10 +316,10 @@ private fun DayCell(day: Int, status: CalendarDayStatus, selected: Boolean, onCl
 @Composable
 private fun LegendRow() {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Legend(DayPending, "Pending")
+        Legend(DayUnopened, "Unopened")
+        Legend(DayAcknowledged, "Not finished")
+        Legend(DayOverdue, "Still waiting")
         Legend(DayCompleted, "Done")
-        Legend(DayOverdue, "Past due")
-        Legend(DayFree, "Free")
     }
 }
 
@@ -284,7 +327,31 @@ private fun LegendRow() {
 private fun Legend(color: Color, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.height(10.dp).padding(end = 4.dp).clip(CircleShape).background(color).padding(5.dp))
-        Text(label, color = Ink.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium)
+        Text(label, color = Ink.copy(alpha = 0.8f), style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun UnopenedLetterRow(
+    message: ChatMessageEntity,
+    tasks: List<TaskEntity>,
+    onOpen: () -> Unit
+) {
+    val task = message.taskId?.let { id -> tasks.find { it.id == id } }
+    val preview = when {
+        task != null -> NotificationCopy.personalNote(task)
+        else -> message.body.removePrefix("✉️").trim()
+    }.ifBlank { "Letter from you" }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Foam.copy(alpha = 0.85f))
+            .clickable(onClick = onOpen)
+            .padding(12.dp)
+    ) {
+        Text("Unopened letter", color = DayUnopened, style = MaterialTheme.typography.labelMedium)
+        Text(preview, color = Ink, style = MaterialTheme.typography.titleMedium, maxLines = 3)
     }
 }
 
@@ -300,6 +367,14 @@ private fun TaskRow(
         .atZone(TimeDefaults.zoneId())
         .toLocalTime()
         .format(DateTimeFormatter.ofPattern("h:mm a"))
+    val statusLabel = when (task.status) {
+        TaskStatus.ACKNOWLEDGED -> "Acknowledged, not finished"
+        TaskStatus.COMPLETED -> "Finished"
+        TaskStatus.PENDING -> "Waiting"
+        TaskStatus.SHELVED_UNACKNOWLEDGED -> "Still waiting"
+        TaskStatus.NEEDS_RESCHEDULE -> "Needs a new day"
+        TaskStatus.DISMISSED -> "Set aside"
+    }
     Column(
         Modifier
             .fillMaxWidth()
@@ -309,7 +384,7 @@ private fun TaskRow(
     ) {
         Text(task.title, color = Ink, style = MaterialTheme.typography.titleMedium)
         Text(
-            "$time · ${task.status.name.lowercase().replace('_', ' ')} · ${task.priority} · ${task.category}",
+            "$time · $statusLabel",
             color = Ink.copy(alpha = 0.7f),
             style = MaterialTheme.typography.bodyMedium
         )
@@ -318,7 +393,7 @@ private fun TaskRow(
                 TextButton(onClick = onAcknowledge) { Text("Acknowledge", color = WaterBlue) }
             }
             if (task.status != TaskStatus.COMPLETED) {
-                TextButton(onClick = onComplete) { Text("Mark done", color = WaterBlue) }
+                TextButton(onClick = onComplete) { Text("Mark finished", color = WaterBlue) }
                 TextButton(onClick = onEdit) { Text("Edit", color = WaterBlue) }
             }
             TextButton(onClick = onDelete) { Text("Delete", color = DayOverdue) }

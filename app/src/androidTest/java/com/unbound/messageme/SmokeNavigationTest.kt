@@ -1,6 +1,7 @@
 package com.unbound.messageme
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -21,7 +22,17 @@ class SmokeNavigationTest {
 
     @Before
     fun dismissFirstRunNotificationPrompt() {
-        runCatching { composeRule.onNodeWithText("Not Now").performClick() }
+        composeRule.waitForIdle()
+        val appeared = runCatching {
+            composeRule.waitUntil(timeoutMillis = 4_000) {
+                composeRule.onAllNodesWithText("Not Now").fetchSemanticsNodes().isNotEmpty()
+            }
+            true
+        }.getOrDefault(false)
+        if (appeared) {
+            composeRule.onNodeWithText("Not Now").performClick()
+            composeRule.waitForIdle()
+        }
     }
 
     @Test

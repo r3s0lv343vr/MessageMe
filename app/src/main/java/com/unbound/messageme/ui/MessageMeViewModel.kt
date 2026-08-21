@@ -215,6 +215,7 @@ class MessageMeViewModel @Inject constructor(
         if (hasAskedPermission.value != false) return
         if (systemNotificationsAllowed) {
             viewModelScope.launch { preferences.setAskedNotificationPermission(true) }
+            _pendingPermissionPrompt.value = false
             return
         }
         _pendingPermissionPrompt.value = true

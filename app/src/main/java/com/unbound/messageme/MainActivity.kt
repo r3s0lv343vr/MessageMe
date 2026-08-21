@@ -58,16 +58,18 @@ class MainActivity : ComponentActivity() {
     private var rewriteTaskId by mutableStateOf<String?>(null)
     private var openInbox by mutableStateOf<OpenInboxTarget?>(null)
     private var openReceivedDay by mutableStateOf<String?>(null)
+    private var systemNotificationsBlocked by mutableStateOf(true)
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
-            // User response handled; preferences already marked asked by ViewModel.
+            refreshSystemNotificationState()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         consumeNotificationIntent(intent)
+        refreshSystemNotificationState()
 
         setContent {
             val viewModel: MessageMeViewModel = hiltViewModel()
@@ -81,7 +83,7 @@ class MainActivity : ComponentActivity() {
             MessageMeTheme(darkTheme = dark) {
                 AppNav(
                     viewModel = viewModel,
-                    systemNotificationsBlocked = !NotificationManagerCompat.from(this).areNotificationsEnabled(),
+                    systemNotificationsBlocked = systemNotificationsBlocked,
                     openInbox = openInbox,
                     onOpenInboxConsumed = { openInbox = null },
                     openReceivedDay = openReceivedDay,
@@ -100,10 +102,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshSystemNotificationState()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         consumeNotificationIntent(intent)
+    }
+
+    private fun refreshSystemNotificationState() {
+        systemNotificationsBlocked = !NotificationManagerCompat.from(this).areNotificationsEnabled()
     }
 
     private fun consumeNotificationIntent(intent: Intent?) {

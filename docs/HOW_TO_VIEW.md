@@ -30,6 +30,8 @@ Android Studio must run on a desktop. Open the **`main`** branch (or this remain
 
 You should see the **MessageMe** chat screen.
 
+If the project lives under **OneDrive** (`Documents\AI Cohort Repos\MessageMe`), Run will fail with `:app:hiltJavaCompileDebug` or **Cannot snapshot ...\app\build**. Do **not** use **Build → Clean Project**. **File → Exit**, delete `app\build` in File Explorer, then copy the whole `MessageMe` folder to `C:\Users\<you>\AndroidStudioProjects\MessageMe` and **File → Open** that copy. Building inside OneDrive will keep failing.
+
 Firebase (`app/google-services.json`) is **not** required to open, create, edit, or delete reminders offline.
 
 ### First-run smoke
@@ -50,6 +52,8 @@ Do **not** rely on long-press → Widgets. Pixel lists widgets alphabetically by
 3. If the launcher still has no MessageMe under Widgets, **restart the emulator**, Run again, then use the in-app button. You can also search **MessageMe** in the Widgets search box.
 
 The widget is a larger **orange** rounded bubble labeled **You**, with the note text.
+
+If Home already shows **Can't load widget**, this is the Glance build that landed on `main`. Pull the widget-load fix, Run, long-press each grey square → **Remove**, then tap **Add unread letter to Home** again.
 
 ---
 

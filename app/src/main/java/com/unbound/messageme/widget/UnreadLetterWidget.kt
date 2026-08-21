@@ -1,31 +1,15 @@
 package com.unbound.messageme.widget
 
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color as AndroidColor
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.glance.GlanceId
-import androidx.glance.GlanceModifier
-import androidx.glance.action.clickable
-import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.action.actionStartActivity
-import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.provideContent
-import androidx.glance.background
-import androidx.glance.layout.Column
-import androidx.glance.layout.Spacer
-import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.height
-import androidx.glance.layout.padding
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
+import android.view.View
+import android.widget.RemoteViews
 import com.unbound.messageme.MainActivity
+import com.unbound.messageme.R
 import com.unbound.messageme.data.local.ChatMessageDao
 import com.unbound.messageme.data.local.TaskDao
 import com.unbound.messageme.domain.TimeDefaults
@@ -37,18 +21,92 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.time.LocalDate
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
-class UnreadLetterWidget : GlanceAppWidget() {
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = loadSnapshot(context)
-        provideContent {
-            UnreadLetterBubble(context = context, snapshot = snapshot)
+private val widgetScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+class UnreadLetterWidgetReceiver : AppWidgetProvider() {
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray
+    ) {
+        UnreadLetterViews.applyPlaceholder(context, appWidgetManager, appWidgetIds)
+        val pending = goAsync()
+        widgetScope.launch {
+            try {
+                UnreadLetterViews.push(context, appWidgetIds)
+            } finally {
+                pending.finish()
+            }
         }
     }
 }
 
-class UnreadLetterWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = UnreadLetterWidget()
+internal object UnreadLetterViews {
+    fun applyPlaceholder(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray
+    ) {
+        val empty = UnreadLetterSnapshot(
+            unreadCount = 0,
+            preview = UnreadLetterLogic.EMPTY_PREVIEW
+        )
+        appWidgetIds.forEach { id ->
+            appWidgetManager.updateAppWidget(id, remoteViews(context, empty, id))
+        }
+    }
+    suspend fun push(context: Context, appWidgetIds: IntArray? = null) {
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = appWidgetIds ?: manager.getAppWidgetIds(
+            ComponentName(context, UnreadLetterWidgetReceiver::class.java)
+        )
+        if (ids.isEmpty()) return
+        val snapshot = loadSnapshot(context)
+        ids.forEach { id ->
+            manager.updateAppWidget(id, remoteViews(context, snapshot, id))
+        }
+    }
+
+    private fun remoteViews(
+        context: Context,
+        snapshot: UnreadLetterSnapshot,
+        appWidgetId: Int
+    ): RemoteViews {
+        val views = RemoteViews(context.packageName, R.layout.widget_unread_letter_preview)
+        views.setTextViewText(R.id.unread_letter_sender, UnreadLetterLogic.SENDER)
+        views.setTextViewText(R.id.unread_letter_preview, snapshot.preview)
+        if (snapshot.hasUnread) {
+            views.setViewVisibility(R.id.unread_letter_count, View.VISIBLE)
+            views.setTextViewText(R.id.unread_letter_count, snapshot.countLabel)
+        } else {
+            views.setViewVisibility(R.id.unread_letter_count, View.GONE)
+        }
+        val open = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP
+            action = NotificationHelper.ACTION_OPEN
+            putExtra(
+                NotificationHelper.EXTRA_DAY,
+                snapshot.dayIso ?: LocalDate.now(TimeDefaults.zoneId()).toString()
+            )
+            snapshot.messageId?.let { putExtra(NotificationHelper.EXTRA_MESSAGE_ID, it) }
+            snapshot.taskId?.let { putExtra(NotificationHelper.EXTRA_TASK_ID, it) }
+        }
+        val pending = PendingIntent.getActivity(
+            context,
+            appWidgetId,
+            open,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        views.setOnClickPendingIntent(R.id.unread_letter_root, pending)
+        return views
+    }
 }
 
 @EntryPoint
@@ -70,68 +128,5 @@ internal suspend fun loadSnapshot(context: Context): UnreadLetterSnapshot {
         )
     }.getOrElse {
         UnreadLetterSnapshot(unreadCount = 0, preview = UnreadLetterLogic.EMPTY_PREVIEW)
-    }
-}
-
-@Composable
-private fun UnreadLetterBubble(context: Context, snapshot: UnreadLetterSnapshot) {
-    val foam = ColorProvider(AndroidColor.parseColor("#FFFDF8"))
-    val orange = ColorProvider(AndroidColor.parseColor("#F4A261"))
-    val red = ColorProvider(AndroidColor.parseColor("#E4572E"))
-    val openIntent = Intent(context, MainActivity::class.java).apply {
-        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-            Intent.FLAG_ACTIVITY_SINGLE_TOP or
-            Intent.FLAG_ACTIVITY_CLEAR_TOP
-        action = NotificationHelper.ACTION_OPEN
-        putExtra(
-            NotificationHelper.EXTRA_DAY,
-            snapshot.dayIso ?: LocalDate.now(TimeDefaults.zoneId()).toString()
-        )
-        snapshot.messageId?.let { putExtra(NotificationHelper.EXTRA_MESSAGE_ID, it) }
-        snapshot.taskId?.let { putExtra(NotificationHelper.EXTRA_TASK_ID, it) }
-    }
-
-    Column(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .padding(8.dp)
-            .clickable(actionStartActivity(openIntent))
-            .cornerRadius(22.dp)
-            .background(orange)
-            .padding(16.dp)
-    ) {
-        Text(
-            text = UnreadLetterLogic.SENDER,
-            style = TextStyle(
-                color = foam,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
-            )
-        )
-        if (snapshot.hasUnread) {
-            Spacer(GlanceModifier.height(4.dp))
-            Text(
-                text = snapshot.countLabel,
-                style = TextStyle(
-                    color = foam,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                ),
-                modifier = GlanceModifier
-                    .cornerRadius(12.dp)
-                    .background(red)
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            )
-        }
-        Spacer(GlanceModifier.height(8.dp))
-        Text(
-            text = snapshot.preview,
-            maxLines = 3,
-            style = TextStyle(
-                color = foam,
-                fontSize = 16.sp
-            ),
-            modifier = GlanceModifier.fillMaxWidth()
-        )
     }
 }

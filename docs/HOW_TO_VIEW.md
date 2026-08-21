@@ -53,6 +53,8 @@ Do **not** rely on long-press → Widgets. Pixel lists widgets alphabetically by
 
 The widget is a larger **orange** rounded bubble labeled **You**, with the note text.
 
+If Home already shows **Can't load widget**, Run this build, long-press each broken square → **Remove**, then tap **Add unread letter to Home** again.
+
 ---
 
 ## 2) Agent / emulator notes

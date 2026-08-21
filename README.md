@@ -85,7 +85,7 @@ Release-ready bundle (debug signing only until a keystore is supplied):
 
 ### Permissions notes
 
-- Notification permission is requested **after the first scheduled reminder**, with in-app copy from `strings.xml`.
+- Notification permission is requested **once on first launch** (recommended). Turn delivery off later in Settings.
 - Channel ID: `scheduled_messages` · Name: **Scheduled Messages** · Importance: High.
 - Exact alarms use `AlarmManager`; pending alarms are restored on `BOOT_COMPLETED`, timezone, and time changes.
 

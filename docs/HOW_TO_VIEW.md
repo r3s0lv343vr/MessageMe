@@ -36,7 +36,7 @@ Firebase (`app/google-services.json`) is **not** required to open, create, edit,
 
 ### First-run smoke
 1. **Scheduled** tab: Title `Walk the dog` → Send (time optional; skip the clock for an **overnight letter** at your envelope hour. After that hour today, it becomes **tomorrow**).
-2. Allow notifications, or tap **Not Now** — the reminder stays on Scheduled until due.
+2. On first open, **Allow notifications** (recommended) or **Not Now**. Later: Settings → Deliver letters as notifications.
 3. Set time a couple of minutes ahead (use the **emulator** clock, top-left) → wait, then open **Received**: the message for that day should be there. Tap it to open only that note; Back returns to that day’s list.
 4. Hamburger → calendar: **Week of unopened mail**, unopened / not-finished tiles, tap an unopened letter.
 5. Scheduled: **Edit**, **Snooze 10m**, **Delete**.

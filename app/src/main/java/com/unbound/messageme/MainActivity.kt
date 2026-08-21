@@ -55,7 +55,6 @@ data class OpenInboxTarget(val dateIso: String, val messageId: String)
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private var showInAppPermissionDialog by mutableStateOf(false)
     private var rewriteTaskId by mutableStateOf<String?>(null)
     private var openInbox by mutableStateOf<OpenInboxTarget?>(null)
     private var openReceivedDay by mutableStateOf<String?>(null)
@@ -83,8 +82,6 @@ class MainActivity : ComponentActivity() {
                 AppNav(
                     viewModel = viewModel,
                     systemNotificationsBlocked = !NotificationManagerCompat.from(this).areNotificationsEnabled(),
-                    showPermissionDialog = showInAppPermissionDialog ||
-                        viewModel.pendingPermissionPrompt.collectAsStateWithLifecycle().value,
                     openInbox = openInbox,
                     onOpenInboxConsumed = { openInbox = null },
                     openReceivedDay = openReceivedDay,
@@ -93,12 +90,10 @@ class MainActivity : ComponentActivity() {
                     onRewriteConsumed = { rewriteTaskId = null },
                     onAllowNotifications = {
                         viewModel.markPermissionAsked()
-                        showInAppPermissionDialog = false
                         requestSystemNotificationPermission()
                     },
                     onDeferNotifications = {
                         viewModel.markPermissionAsked()
-                        showInAppPermissionDialog = false
                     }
                 )
             }
@@ -152,7 +147,6 @@ class MainActivity : ComponentActivity() {
 private fun AppNav(
     viewModel: MessageMeViewModel,
     systemNotificationsBlocked: Boolean,
-    showPermissionDialog: Boolean,
     openInbox: OpenInboxTarget?,
     onOpenInboxConsumed: () -> Unit,
     openReceivedDay: String?,
@@ -170,6 +164,8 @@ private fun AppNav(
     val lastExport by viewModel.lastExport.collectAsStateWithLifecycle()
     val envelopeHour by viewModel.envelopeHour.collectAsStateWithLifecycle()
     val seenEnvelopeHint by viewModel.seenEnvelopeHint.collectAsStateWithLifecycle()
+    val hasAskedPermission by viewModel.hasAskedPermission.collectAsStateWithLifecycle()
+    val pendingPermissionPrompt by viewModel.pendingPermissionPrompt.collectAsStateWithLifecycle()
     val notice by viewModel.notice.collectAsStateWithLifecycle()
     val editingTask by viewModel.editingTask.collectAsStateWithLifecycle()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -180,6 +176,10 @@ private fun AppNav(
 
     LaunchedEffect(Unit) {
         viewModel.refreshAlarms()
+    }
+
+    LaunchedEffect(hasAskedPermission, systemNotificationsBlocked) {
+        viewModel.considerFirstRunNotificationPrompt(!systemNotificationsBlocked)
     }
 
     LaunchedEffect(rewriteTaskId) {
@@ -376,6 +376,7 @@ private fun AppNav(
                     lastExport = lastExport,
                     onBack = { navController.popBackStack() },
                     onToggleNotifications = viewModel::setNotificationsEnabled,
+                    onAllowOsNotifications = onAllowNotifications,
                     onThemeMode = viewModel::setThemeMode,
                     onEnvelopeHour = viewModel::setEnvelopeHour,
                     onExportJson = viewModel::exportJson,
@@ -388,7 +389,7 @@ private fun AppNav(
         }
     }
 
-    if (showPermissionDialog) {
+    if (pendingPermissionPrompt) {
         AlertDialog(
             onDismissRequest = onDeferNotifications,
             title = { Text(stringResource(R.string.permission_title)) },

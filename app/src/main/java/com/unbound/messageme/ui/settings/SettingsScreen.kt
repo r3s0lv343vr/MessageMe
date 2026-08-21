@@ -35,9 +35,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.unbound.messageme.R
 import com.unbound.messageme.ui.components.WatercolorBackground
 import com.unbound.messageme.ui.theme.Ink
+import com.unbound.messageme.widget.UnreadLetterPin
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,6 +111,17 @@ fun SettingsScreen(
                         }
                         context.startActivity(intent)
                     }) { Text("Open Settings") }
+                }
+
+                Spacer(Modifier.height(8.dp))
+                Text("Home screen", style = MaterialTheme.typography.titleLarge, color = Ink)
+                Text(
+                    "The unread letter is a widget, not the round blue app icon. Add it here if it does not appear under Widgets.",
+                    color = Ink.copy(alpha = 0.75f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Button(onClick = { UnreadLetterPin.requestPin(context) }) {
+                    Text(stringResource(R.string.widget_add_to_home))
                 }
 
                 Spacer(Modifier.height(8.dp))

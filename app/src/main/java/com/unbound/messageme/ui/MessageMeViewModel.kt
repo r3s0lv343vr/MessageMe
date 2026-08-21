@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -60,8 +61,10 @@ class MessageMeViewModel @Inject constructor(
     val seenEnvelopeHint = preferences.seenEnvelopeHint
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Null until DataStore has loaded, so first-run UI does not flash for returning users. */
     val hasAskedPermission = preferences.hasAskedNotificationPermission
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+        .map<Boolean, Boolean?> { it }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _notice = MutableStateFlow<UiNotice?>(null)
     val notice = _notice.asStateFlow()
@@ -104,7 +107,6 @@ class MessageMeViewModel @Inject constructor(
                 .onSuccess {
                     _notice.value = UiNotice("Reminder scheduled")
                     if (time == null) preferences.setSeenEnvelopeHint(true)
-                    maybePromptNotifications()
                 }
                 .onFailure { _notice.value = UiNotice(it.message ?: "Failed", isError = true) }
         }
@@ -209,9 +211,13 @@ class MessageMeViewModel @Inject constructor(
         repository.rescheduleAllPendingAlarms()
     }
 
-    private suspend fun maybePromptNotifications() {
-        if (!hasAskedPermission.value) {
-            _pendingPermissionPrompt.value = true
+    fun considerFirstRunNotificationPrompt(systemNotificationsAllowed: Boolean) {
+        if (hasAskedPermission.value != false) return
+        if (systemNotificationsAllowed) {
+            viewModelScope.launch { preferences.setAskedNotificationPermission(true) }
+            _pendingPermissionPrompt.value = false
+            return
         }
+        _pendingPermissionPrompt.value = true
     }
 }

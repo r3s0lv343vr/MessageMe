@@ -59,6 +59,7 @@ fun SettingsScreen(
     lastExport: File?,
     onBack: () -> Unit,
     onToggleNotifications: (Boolean) -> Unit,
+    onAllowOsNotifications: () -> Unit,
     onThemeMode: (String) -> Unit,
     onEnvelopeHour: (Int, Int) -> Unit,
     onExportJson: () -> Unit,
@@ -100,25 +101,26 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Internal notifications", color = Ink)
+                    Text("Deliver letters as notifications", color = Ink)
                     Switch(checked = notificationsEnabled, onCheckedChange = onToggleNotifications)
                 }
                 Text(
-                    "When off, reminders stay saved but delivery pauses.",
+                    "Recommended on, so overnight letters reach your lock screen. Turn this off here any time.",
                     color = Ink.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 if (systemNotificationsBlocked) {
                     Text(
-                        "Notifications are blocked in your phone settings. Enable them to receive your scheduled messages.",
+                        "Your phone is still blocking MessageMe notifications.",
                         color = MaterialTheme.colorScheme.error
                     )
+                    Button(onClick = onAllowOsNotifications) { Text("Allow notifications") }
                     Button(onClick = {
                         val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                             putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                         }
                         context.startActivity(intent)
-                    }) { Text("Open Settings") }
+                    }) { Text("Open phone Settings") }
                 }
 
                 Spacer(Modifier.height(8.dp))

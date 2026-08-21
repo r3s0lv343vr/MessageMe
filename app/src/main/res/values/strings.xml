@@ -8,8 +8,8 @@
     <string name="notification_action_acknowledged">Acknowledged</string>
     <string name="notification_action_snooze">Snooze</string>
     <string name="notification_action_rewrite">Rewrite</string>
-    <string name="permission_title">Never miss a reminder from yourself</string>
-    <string name="permission_message">Message Me uses notifications to deliver your scheduled messages and task reminders at the exact time you choose. Without notification permission, your reminders may not appear when you need them.</string>
+    <string name="permission_title">Allow notifications</string>
+    <string name="permission_message">Recommended: allow notifications so letters from you arrive on the lock screen at the time you chose. You can turn this off later in Settings.</string>
     <string name="permission_allow">Allow Notifications</string>
     <string name="permission_not_now">Not Now</string>
     <string name="notifications_blocked">Notifications are blocked in your phone settings. Enable them to receive your scheduled messages.</string>

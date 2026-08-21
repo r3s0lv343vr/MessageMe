@@ -21,6 +21,7 @@ import com.unbound.messageme.domain.ReminderPlanner
 import com.unbound.messageme.domain.SyncConflictLogic
 import com.unbound.messageme.domain.TimeDefaults
 import com.unbound.messageme.notification.ReminderScheduler
+import com.unbound.messageme.widget.UnreadLetterUpdater
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -40,7 +41,8 @@ class MessageRepository @Inject constructor(
     private val syncQueueDao: SyncQueueDao,
     private val scheduler: ReminderScheduler,
     private val preferences: UserPreferences,
-    private val cloudSync: CloudSync
+    private val cloudSync: CloudSync,
+    private val unreadLetterUpdater: UnreadLetterUpdater
 ) {
     private val gson = Gson()
     private val deliverLock = Mutex()
@@ -53,6 +55,7 @@ class MessageRepository @Inject constructor(
 
     suspend fun markMessageRead(messageId: String) {
         messageDao.markRead(messageId)
+        refreshUnreadLetter()
     }
 
     suspend fun createReminder(
@@ -161,6 +164,7 @@ class MessageRepository @Inject constructor(
             )
         )
         enqueueSync("task", taskId, "upsert", deleted)
+        refreshUnreadLetter()
     }
 
     suspend fun acknowledge(taskId: String) {
@@ -190,6 +194,7 @@ class MessageRepository @Inject constructor(
             )
         )
         enqueueSync("task", taskId, "upsert", updated)
+        refreshUnreadLetter()
     }
 
     suspend fun markCompleted(taskId: String) {
@@ -214,6 +219,7 @@ class MessageRepository @Inject constructor(
         )
         maybeSpawnRecurrence(updated)
         enqueueSync("task", taskId, "upsert", updated)
+        refreshUnreadLetter()
     }
 
     suspend fun dismiss(taskId: String) {
@@ -234,6 +240,7 @@ class MessageRepository @Inject constructor(
             )
         )
         enqueueSync("task", taskId, "upsert", updated)
+        refreshUnreadLetter()
     }
 
     suspend fun reschedule(taskId: String, date: LocalDate, time: LocalTime?) {
@@ -360,6 +367,7 @@ class MessageRepository @Inject constructor(
         ) {
             scheduler.notifyUser(updatedTask, reminder, messageId)
         }
+        refreshUnreadLetter()
     }
 
     suspend fun rescheduleAllPendingAlarms() {
@@ -440,6 +448,10 @@ class MessageRepository @Inject constructor(
             recurrence = completed.recurrence,
             customRecurrenceDays = completed.customRecurrenceDays
         )
+    }
+
+    private suspend fun refreshUnreadLetter() {
+        unreadLetterUpdater.refresh()
     }
 
     private suspend fun enqueueSync(type: String, id: String, op: String, task: TaskEntity) {

@@ -55,6 +55,9 @@ interface ChatMessageDao {
     @Query("SELECT * FROM chat_messages ORDER BY sentAtEpochMillis ASC, id ASC")
     fun observeAll(): Flow<List<ChatMessageEntity>>
 
+    @Query("SELECT * FROM chat_messages ORDER BY sentAtEpochMillis ASC, id ASC")
+    suspend fun getAll(): List<ChatMessageEntity>
+
     @Query("SELECT * FROM chat_messages WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): ChatMessageEntity?
 

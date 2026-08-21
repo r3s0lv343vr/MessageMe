@@ -1,6 +1,6 @@
 # MessageMe
 
-Android app that lets you message yourself reminders for tasks. Offline-first with Room, exact AlarmManager scheduling, **Scheduled** and **Received** pages, colour-coded calendar, and optional Firebase Auth + Firestore sync.
+Android app that lets you message yourself reminders for tasks. Offline-first with Room, exact AlarmManager scheduling, **Scheduled** and **Received** pages, a home-screen unread-letter widget, colour-coded calendar, and optional Firebase Auth + Firestore sync.
 
 **Application ID:** `com.unbound.messageme`  
 **Min SDK:** 24 · **Target / Compile SDK:** 36  
@@ -124,6 +124,7 @@ Release-ready bundle (debug signing only until a keystore is supplied):
 - [ ] Edit, snooze, and delete a reminder from chat  
 - [ ] Create reminder a few minutes ahead → it sits on **Scheduled**, then appears on **Received** at that time  
 - [ ] Tap the notification → only that message; Back → that day’s Received list  
+- [ ] Home screen widget: one bubble from You + unread count; tap opens that letter  
 - [ ] Internal notification toggle pauses delivery  
 - [ ] System-blocked notifications show Settings CTA  
 - [ ] Restart app / reboot → reminders rescheduled  

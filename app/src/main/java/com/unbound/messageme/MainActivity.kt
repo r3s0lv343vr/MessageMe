@@ -57,6 +57,7 @@ class MainActivity : ComponentActivity() {
     private var showInAppPermissionDialog by mutableStateOf(false)
     private var rewriteTaskId by mutableStateOf<String?>(null)
     private var openInbox by mutableStateOf<OpenInboxTarget?>(null)
+    private var openReceivedDay by mutableStateOf<String?>(null)
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
@@ -85,6 +86,8 @@ class MainActivity : ComponentActivity() {
                         viewModel.pendingPermissionPrompt.collectAsStateWithLifecycle().value,
                     openInbox = openInbox,
                     onOpenInboxConsumed = { openInbox = null },
+                    openReceivedDay = openReceivedDay,
+                    onOpenReceivedDayConsumed = { openReceivedDay = null },
                     rewriteTaskId = rewriteTaskId,
                     onRewriteConsumed = { rewriteTaskId = null },
                     onAllowNotifications = {
@@ -108,21 +111,25 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun consumeNotificationIntent(intent: Intent?) {
-        val taskId = intent?.getStringExtra(NotificationHelper.EXTRA_TASK_ID) ?: return
+        if (intent == null) return
+        val taskId = intent.getStringExtra(NotificationHelper.EXTRA_TASK_ID)
         val reminderId = intent.getStringExtra(NotificationHelper.EXTRA_REMINDER_ID)
         val messageId = intent.getStringExtra(NotificationHelper.EXTRA_MESSAGE_ID)
         val day = intent.getStringExtra(NotificationHelper.EXTRA_DAY)
             ?: LocalDate.now(TimeDefaults.zoneId()).toString()
         when (intent.action) {
             NotificationHelper.ACTION_REWRITE -> {
+                if (taskId == null) return
                 rewriteTaskId = taskId
                 if (reminderId != null) {
                     NotificationHelper.cancel(this, taskId, reminderId)
                 }
             }
-            else -> {
+            NotificationHelper.ACTION_OPEN -> {
                 if (messageId != null) {
                     openInbox = OpenInboxTarget(dateIso = day, messageId = messageId)
+                } else {
+                    openReceivedDay = day
                 }
             }
         }
@@ -147,6 +154,8 @@ private fun AppNav(
     showPermissionDialog: Boolean,
     openInbox: OpenInboxTarget?,
     onOpenInboxConsumed: () -> Unit,
+    openReceivedDay: String?,
+    onOpenReceivedDayConsumed: () -> Unit,
     rewriteTaskId: String?,
     onRewriteConsumed: () -> Unit,
     onAllowNotifications: () -> Unit,
@@ -192,6 +201,16 @@ private fun AppNav(
         }
         navController.navigate("received/${target.dateIso}/message/${target.messageId}")
         onOpenInboxConsumed()
+    }
+
+    LaunchedEffect(openReceivedDay) {
+        val day = openReceivedDay ?: return@LaunchedEffect
+        navController.navigate("received/$day") {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        onOpenReceivedDayConsumed()
     }
 
     Scaffold(

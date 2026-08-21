@@ -14,4 +14,8 @@
     <string name="permission_not_now">Not Now</string>
     <string name="notifications_blocked">Notifications are blocked in your phone settings. Enable them to receive your scheduled messages.</string>
     <string name="open_settings">Open Settings</string>
+    <string name="widget_unread_letter_name">Unread letter</string>
+    <string name="widget_unread_letter_description">One letter from you, with how many are still unread.</string>
+    <string name="widget_unread_letter_sender">You</string>
+    <string name="widget_unread_letter_empty">No unread letters from you</string>
 </resources>

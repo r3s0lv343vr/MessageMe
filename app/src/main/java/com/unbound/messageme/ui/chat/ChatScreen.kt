@@ -44,6 +44,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.unbound.messageme.R
 import com.unbound.messageme.data.local.ChatMessageEntity
 import com.unbound.messageme.data.local.Priority
@@ -122,6 +126,17 @@ fun ChatScreen(
     val scheduled = remember(tasks, messages) { InboxLogic.scheduledTasks(tasks, messages) }
     val listState = rememberLazyListState()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var letterOnHome by remember { mutableStateOf(UnreadLetterPin.isPlaced(context)) }
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                letterOnHome = UnreadLetterPin.isPlaced(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     LaunchedEffect(scheduled.size) {
         if (scheduled.isNotEmpty()) listState.animateScrollToItem(scheduled.lastIndex)
     }
@@ -157,17 +172,19 @@ fun ChatScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                Button(
-                    onClick = { UnreadLetterPin.requestPin(context) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentOrange,
-                        contentColor = Foam
-                    )
-                ) {
-                    Text(stringResource(R.string.widget_add_to_home))
+                if (!letterOnHome) {
+                    Button(
+                        onClick = { UnreadLetterPin.requestPin(context) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AccentOrange,
+                            contentColor = Foam
+                        )
+                    ) {
+                        Text(stringResource(R.string.widget_add_to_home))
+                    }
                 }
                 LazyColumn(
                     Modifier

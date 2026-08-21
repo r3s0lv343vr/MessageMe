@@ -30,6 +30,8 @@ Android Studio must run on a desktop. Open the **`main`** branch (or this remain
 
 You should see the **MessageMe** chat screen.
 
+If the project lives under **OneDrive** (for example `Documents\AI Cohort Repos\MessageMe`) and Run fails on `:app:hiltJavaCompileDebug`, do **not** use **Build → Clean Project**. Close the Run, delete the folder `app\build` in File Explorer, then Run again. Gradle will also write build output to `%USERPROFILE%\.messageme-build\` so OneDrive cannot lock it. The lasting fix is to copy the repo to `C:\Users\<you>\AndroidStudioProjects\MessageMe` and open that copy.
+
 Firebase (`app/google-services.json`) is **not** required to open, create, edit, or delete reminders offline.
 
 ### First-run smoke

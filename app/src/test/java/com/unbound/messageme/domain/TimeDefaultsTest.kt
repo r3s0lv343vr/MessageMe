@@ -11,7 +11,7 @@ class TimeDefaultsTest {
     private val zone = ZoneId.of("UTC")
 
     @Test
-    fun `default time is 3 AM when time omitted`() {
+    fun `default time is envelope hour when time omitted`() {
         val date = LocalDate.of(2026, 8, 10)
         val now = LocalDate.of(2026, 8, 9).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
         val (millis, explicit) = TimeDefaults.resolveDueAt(date, null, zone, now)
@@ -19,6 +19,20 @@ class TimeDefaultsTest {
         assertThat(explicit).isFalse()
         assertThat(local.hour).isEqualTo(3)
         assertThat(local.minute).isEqualTo(0)
+        assertThat(local.toLocalDate()).isEqualTo(date)
+    }
+
+    @Test
+    fun `omitted time uses personal envelope hour`() {
+        val date = LocalDate.of(2026, 8, 10)
+        val now = LocalDate.of(2026, 8, 9).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        val envelope = EnvelopeHour(6, 30)
+        val (millis, explicit) = TimeDefaults.resolveDueAt(
+            date, null, zone, now, envelopeHour = envelope
+        )
+        val local = Instant.ofEpochMilli(millis).atZone(zone)
+        assertThat(explicit).isFalse()
+        assertThat(local.toLocalTime()).isEqualTo(envelope.toLocalTime())
         assertThat(local.toLocalDate()).isEqualTo(date)
     }
 
@@ -58,14 +72,17 @@ class TimeDefaultsTest {
     }
 
     @Test
-    fun `omitted time rolls to next morning when 3 AM already passed`() {
+    fun `omitted time rolls to next morning when envelope hour already passed`() {
         val date = LocalDate.of(2026, 8, 10)
         val now = date.atTime(15, 0).atZone(zone).toInstant().toEpochMilli()
-        val (millis, explicit) = TimeDefaults.resolveDueAt(date, null, zone, now)
+        val envelope = EnvelopeHour(6, 30)
+        val (millis, explicit) = TimeDefaults.resolveDueAt(
+            date, null, zone, now, envelopeHour = envelope
+        )
         val local = Instant.ofEpochMilli(millis).atZone(zone)
         assertThat(explicit).isFalse()
         assertThat(local.toLocalDate()).isEqualTo(date.plusDays(1))
-        assertThat(local.hour).isEqualTo(3)
+        assertThat(local.toLocalTime()).isEqualTo(envelope.toLocalTime())
     }
 
     @Test

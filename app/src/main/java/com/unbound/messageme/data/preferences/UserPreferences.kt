@@ -3,8 +3,10 @@ package com.unbound.messageme.data.preferences
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.unbound.messageme.domain.EnvelopeHour
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -21,6 +23,9 @@ class UserPreferences @Inject constructor(
     private val askedPermissionKey = booleanPreferencesKey("asked_notification_permission")
     private val themeKey = stringPreferencesKey("theme_mode") // system|light|dark
     private val cloudBackupKey = booleanPreferencesKey("cloud_backup_enabled")
+    private val envelopeHourKey = intPreferencesKey("envelope_hour")
+    private val envelopeMinuteKey = intPreferencesKey("envelope_minute")
+    private val seenEnvelopeHintKey = booleanPreferencesKey("seen_envelope_hint")
 
     val internalNotificationsEnabled: Flow<Boolean> =
         context.dataStore.data.map { it[notificationsEnabledKey] ?: true }
@@ -33,6 +38,17 @@ class UserPreferences @Inject constructor(
 
     val cloudBackupEnabled: Flow<Boolean> =
         context.dataStore.data.map { it[cloudBackupKey] ?: false }
+
+    val envelopeHour: Flow<EnvelopeHour> =
+        context.dataStore.data.map {
+            EnvelopeHour(
+                hour = it[envelopeHourKey] ?: EnvelopeHour.DEFAULT_HOUR,
+                minute = it[envelopeMinuteKey] ?: EnvelopeHour.DEFAULT_MINUTE
+            )
+        }
+
+    val seenEnvelopeHint: Flow<Boolean> =
+        context.dataStore.data.map { it[seenEnvelopeHintKey] ?: false }
 
     suspend fun setInternalNotificationsEnabled(enabled: Boolean) {
         context.dataStore.edit { it[notificationsEnabledKey] = enabled }
@@ -48,5 +64,16 @@ class UserPreferences @Inject constructor(
 
     suspend fun setCloudBackupEnabled(enabled: Boolean) {
         context.dataStore.edit { it[cloudBackupKey] = enabled }
+    }
+
+    suspend fun setEnvelopeHour(hour: Int, minute: Int) {
+        context.dataStore.edit {
+            it[envelopeHourKey] = hour.coerceIn(0, 23)
+            it[envelopeMinuteKey] = minute.coerceIn(0, 59)
+        }
+    }
+
+    suspend fun setSeenEnvelopeHint(seen: Boolean) {
+        context.dataStore.edit { it[seenEnvelopeHintKey] = seen }
     }
 }

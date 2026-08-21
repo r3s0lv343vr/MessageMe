@@ -34,20 +34,19 @@ class ReminderPlannerTest {
     }
 
     @Test
-    fun `includes daytime reminders when default 3am time used`() {
+    fun `omitted time does not add daytime check-in pings`() {
         val due = LocalDate.of(2026, 8, 20)
-            .atTime(LocalTime.of(3, 0))
+            .atTime(LocalTime.of(6, 30))
             .atZone(zone)
             .toInstant()
             .toEpochMilli()
         val now = due - TimeDefaults.minutesToMillis(48 * 60)
         val planned = ReminderPlanner.planForTask("t1", due, timeWasExplicitlyChosen = false, nowEpochMillis = now)
         val types = planned.map { it.type }
-        assertThat(types).containsAtLeast(
-            ReminderType.DAYTIME_8AM,
-            ReminderType.DAYTIME_10AM,
-            ReminderType.DAYTIME_3PM
-        )
+        assertThat(types).contains(ReminderType.AT_DUE)
+        assertThat(types).doesNotContain(ReminderType.DAYTIME_8AM)
+        assertThat(types).doesNotContain(ReminderType.DAYTIME_10AM)
+        assertThat(types).doesNotContain(ReminderType.DAYTIME_3PM)
     }
 
     @Test

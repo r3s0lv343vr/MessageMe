@@ -169,6 +169,8 @@ private fun AppNav(
     val completedCount by viewModel.completedCount.collectAsStateWithLifecycle()
     val openCount by viewModel.openCount.collectAsStateWithLifecycle()
     val lastExport by viewModel.lastExport.collectAsStateWithLifecycle()
+    val envelopeHour by viewModel.envelopeHour.collectAsStateWithLifecycle()
+    val seenEnvelopeHint by viewModel.seenEnvelopeHint.collectAsStateWithLifecycle()
     val notice by viewModel.notice.collectAsStateWithLifecycle()
     val editingTask by viewModel.editingTask.collectAsStateWithLifecycle()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -268,7 +270,10 @@ private fun AppNav(
                     onCancelEdit = viewModel::cancelEdit,
                     onReschedule = viewModel::reschedule,
                     onSnooze = viewModel::snooze,
-                    onDelete = viewModel::delete
+                    onDelete = viewModel::delete,
+                    envelopeHour = envelopeHour,
+                    showEnvelopeHint = !seenEnvelopeHint,
+                    onDismissEnvelopeHint = viewModel::markEnvelopeHintSeen
                 )
             }
             composable(
@@ -359,11 +364,13 @@ private fun AppNav(
                     notificationsEnabled = notificationsEnabled,
                     systemNotificationsBlocked = systemNotificationsBlocked,
                     themeMode = themeMode,
+                    envelopeHour = envelopeHour,
                     firebaseConfigured = viewModel.firebaseConfigured,
                     lastExport = lastExport,
                     onBack = { navController.popBackStack() },
                     onToggleNotifications = viewModel::setNotificationsEnabled,
                     onThemeMode = viewModel::setThemeMode,
+                    onEnvelopeHour = viewModel::setEnvelopeHour,
                     onExportJson = viewModel::exportJson,
                     onExportCsv = viewModel::exportCsv,
                     onExportPdf = viewModel::exportPdf,

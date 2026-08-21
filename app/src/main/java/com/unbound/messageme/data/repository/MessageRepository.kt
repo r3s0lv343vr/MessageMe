@@ -15,6 +15,7 @@ import com.unbound.messageme.data.local.TaskEntity
 import com.unbound.messageme.data.local.TaskStatus
 import com.unbound.messageme.data.preferences.UserPreferences
 import com.unbound.messageme.data.sync.CloudSync
+import com.unbound.messageme.domain.EnvelopeHour
 import com.unbound.messageme.domain.NotificationCopy
 import com.unbound.messageme.domain.NotificationDeliveryPolicy
 import com.unbound.messageme.domain.ReminderPlanner
@@ -68,7 +69,7 @@ class MessageRepository @Inject constructor(
         recurrence: Recurrence = Recurrence.NONE,
         customRecurrenceDays: Int? = null
     ): Result<String> {
-        val (dueAt, explicit) = TimeDefaults.resolveDueAt(date, time)
+        val (dueAt, explicit) = resolveDue(date, time)
         TimeDefaults.validateReminderInput(title, dueAt)?.let {
             return Result.failure(IllegalArgumentException(it))
         }
@@ -114,7 +115,7 @@ class MessageRepository @Inject constructor(
         customRecurrenceDays: Int?
     ): Result<Unit> {
         val existing = taskDao.getById(taskId) ?: return Result.failure(IllegalArgumentException("Not found"))
-        val (dueAt, explicit) = TimeDefaults.resolveDueAt(date, time)
+        val (dueAt, explicit) = resolveDue(date, time)
         TimeDefaults.validateReminderInput(title, dueAt)?.let {
             return Result.failure(IllegalArgumentException(it))
         }
@@ -245,7 +246,7 @@ class MessageRepository @Inject constructor(
 
     suspend fun reschedule(taskId: String, date: LocalDate, time: LocalTime?) {
         val task = taskDao.getById(taskId) ?: return
-        val (dueAt, explicit) = TimeDefaults.resolveDueAt(date, time)
+        val (dueAt, explicit) = resolveDue(date, time)
         cancelPending(taskId)
         val updated = task.copy(
             dueAtEpochMillis = dueAt,
@@ -472,10 +473,36 @@ class MessageRepository @Inject constructor(
         val timeNote = if (task.timeWasExplicitlyChosen) {
             due.toLocalTime().toString()
         } else {
-            "3:00 AM default"
+            "overnight letter · ${EnvelopeHour(due.hour, due.minute).clockLabel()}"
         }
         val extra = if (task.body.isBlank()) "" else "\n${task.body}"
         return "📌 ${task.title}$extra\nDue ${due.toLocalDate()} · $timeNote · ${task.priority} · ${task.category}"
+    }
+
+    private suspend fun resolveDue(date: LocalDate, time: LocalTime?): Pair<Long, Boolean> =
+        TimeDefaults.resolveDueAt(date, time, envelopeHour = currentEnvelopeHour())
+
+    private suspend fun currentEnvelopeHour(): EnvelopeHour = preferences.envelopeHour.first()
+
+    suspend fun setEnvelopeHour(hour: Int, minute: Int) {
+        preferences.setEnvelopeHour(hour, minute)
+        val envelope = EnvelopeHour(hour, minute)
+        taskDao.getActive()
+            .filter { it.status == TaskStatus.PENDING && !it.timeWasExplicitlyChosen }
+            .forEach { task ->
+                val date = Instant.ofEpochMilli(task.dueAtEpochMillis)
+                    .atZone(TimeDefaults.zoneId())
+                    .toLocalDate()
+                val (dueAt, _) = TimeDefaults.resolveDueAt(date, null, envelopeHour = envelope)
+                cancelPending(task.id)
+                val updated = task.copy(
+                    dueAtEpochMillis = dueAt,
+                    updatedAtEpochMillis = TimeDefaults.nowMillis()
+                )
+                taskDao.upsert(updated)
+                scheduleForTask(updated)
+                enqueueSync("task", task.id, "upsert", updated)
+            }
     }
 
     private data class ReminderCopy(

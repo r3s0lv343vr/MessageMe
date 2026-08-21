@@ -9,14 +9,11 @@ import java.time.ZoneOffset
 import java.util.concurrent.TimeUnit
 
 object TimeDefaults {
-    const val DEFAULT_HOUR = 3
-    const val DEFAULT_MINUTE = 0
+    const val DEFAULT_HOUR = EnvelopeHour.DEFAULT_HOUR
+    const val DEFAULT_MINUTE = EnvelopeHour.DEFAULT_MINUTE
 
     /** AlarmManager ignores triggers that are already in the past; nudge send-now a few seconds ahead. */
     const val SEND_NOW_OFFSET_MS = 5_000L
-
-    /** Daytime reminder hours used when task time was not explicitly chosen. */
-    val DAYTIME_REMINDER_HOURS = listOf(8, 10, 15)
 
     /** Unacked follow-ups after task time: +30m, then +60m, then +90m. */
     val UNACKED_OFFSETS_AFTER_TASK_MINUTES = listOf(30L, 90L, 180L)
@@ -40,11 +37,12 @@ object TimeDefaults {
         date: LocalDate,
         time: LocalTime?,
         zoneId: ZoneId = zoneId(),
-        nowEpochMillis: Long = nowMillis()
+        nowEpochMillis: Long = nowMillis(),
+        envelopeHour: EnvelopeHour = EnvelopeHour.DEFAULT
     ): Pair<Long, Boolean> {
         val today = Instant.ofEpochMilli(nowEpochMillis).atZone(zoneId).toLocalDate()
         val explicit = time != null
-        val chosen = time ?: LocalTime.of(DEFAULT_HOUR, DEFAULT_MINUTE)
+        val chosen = time ?: envelopeHour.toLocalTime()
         var millis = LocalDateTime.of(date, chosen).atZone(zoneId).toInstant().toEpochMilli()
         val alreadyPassed = millis < nowEpochMillis - minutesToMillis(1)
         if (alreadyPassed) {
@@ -52,7 +50,7 @@ object TimeDefaults {
                 // Same-day (or later) clock time already passed: deliver now, do not error.
                 millis = nowEpochMillis + SEND_NOW_OFFSET_MS
             } else if (!explicit) {
-                // Unset time means 3:00 AM. If that instant already passed, use the next morning.
+                // Overnight letter: if this morning's envelope hour passed, use the next morning.
                 millis = LocalDateTime.of(date.plusDays(1), chosen).atZone(zoneId).toInstant().toEpochMilli()
             }
         }

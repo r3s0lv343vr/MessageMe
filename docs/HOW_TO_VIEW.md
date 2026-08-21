@@ -35,7 +35,7 @@ If the project lives under **OneDrive** (`Documents\AI Cohort Repos\MessageMe`),
 Firebase (`app/google-services.json`) is **not** required to open, create, edit, or delete reminders offline.
 
 ### First-run smoke
-1. **Scheduled** tab: Title `Walk the dog` → Send (time optional; after 3:00 AM local, the default becomes **tomorrow 3:00 AM**).
+1. **Scheduled** tab: Title `Walk the dog` → Send (time optional; skip the clock for an **overnight letter** at your envelope hour. After that hour today, it becomes **tomorrow**).
 2. Allow notifications, or tap **Not Now** — the reminder stays on Scheduled until due.
 3. Set time a couple of minutes ahead (use the **emulator** clock, top-left) → wait, then open **Received**: the message for that day should be there. Tap it to open only that note; Back returns to that day’s list.
 4. Hamburger → calendar tile colour + day list.

@@ -7,6 +7,12 @@ import android.widget.Toast
 import com.unbound.messageme.R
 
 object UnreadLetterPin {
+    fun isPlaced(context: Context): Boolean {
+        val manager = AppWidgetManager.getInstance(context)
+        val provider = ComponentName(context, UnreadLetterWidgetReceiver::class.java)
+        return manager.getAppWidgetIds(provider).isNotEmpty()
+    }
+
     /** Asks the launcher to place the unread-letter widget on the home screen. */
     fun requestPin(context: Context): Boolean {
         val manager = AppWidgetManager.getInstance(context)

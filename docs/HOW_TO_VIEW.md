@@ -40,6 +40,12 @@ Firebase (`app/google-services.json`) is **not** required to open, create, edit,
 5. Scheduled: **Edit**, **Snooze 10m**, **Delete**.
 6. Settings → internal notification toggle, JSON/CSV/PDF export.
 
+### Home-screen unread letter
+1. Leave the app: emulator **Home** (circle).
+2. Long-press the Pixel wallpaper → **Widgets** → **MessageMe** → **Unread letter**.
+3. Drop it on the home screen. It is one orange bubble from **You**, not a list.
+4. After a message arrives, the bubble shows the note and an unread count. Tap it to open that letter.
+
 ---
 
 ## 2) Agent / emulator notes

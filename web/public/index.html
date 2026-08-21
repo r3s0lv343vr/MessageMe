@@ -6,7 +6,7 @@
     <title>MessageMe — message yourself reminders</title>
     <meta
       name="description"
-      content="MessageMe is an Android app for messaging yourself task reminders with a chat UI, calendar, and offline-first scheduling."
+      content="MessageMe is an Android app for messaging yourself reminders. Join the waitlist with your name and a valid email."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -22,8 +22,8 @@
     <header class="top">
       <a class="brand-mark" href="/">MessageMe</a>
       <nav>
+        <a href="#waitlist">Waitlist</a>
         <a href="#how">How it works</a>
-        <a href="#run">Run the app</a>
         <a
           class="btn ghost"
           href="https://github.com/r3s0lv343vr/MessageMe"
@@ -36,38 +36,93 @@
 
     <main>
       <section class="hero">
-        <p class="brand">MessageMe</p>
-        <h1>Message yourself. Remember what matters.</h1>
-        <p class="lede">
-          An Android reminder app that feels like a chat with you — schedule
-          tasks, get envelope-style notifications, and track them on a
-          colour-coded calendar. Works offline.
-        </p>
-        <div class="cta">
-          <a class="btn primary" href="#run">View / run on Android</a>
-          <a
-            class="btn secondary"
-            href="https://github.com/r3s0lv343vr/MessageMe"
-            target="_blank"
-            rel="noreferrer"
-            >Open GitHub repo</a
-          >
+        <div class="hero-copy">
+          <p class="brand">MessageMe</p>
+          <h1>Message yourself. Remember what matters.</h1>
+          <p class="lede">
+            Letters from you, arriving when you asked — not another to-do list.
+            Chat with yourself, open an envelope on the lock screen, and keep
+            it honest on a quiet calendar. Works offline.
+          </p>
         </div>
+
+        <form id="waitlist-form" class="waitlist" novalidate>
+          <h2 id="waitlist">Get early access</h2>
+          <p class="waitlist-lede">
+            First name, last name, and a valid email. We’ll only write about
+            MessageMe.
+          </p>
+
+          <div class="name-row">
+            <label>
+              First name
+              <input
+                id="first-name"
+                name="firstName"
+                type="text"
+                autocomplete="given-name"
+                maxlength="80"
+                required
+                aria-describedby="first-name-error"
+              />
+              <span id="first-name-error" class="field-error" data-error-for="firstName"></span>
+            </label>
+            <label>
+              Last name
+              <input
+                id="last-name"
+                name="lastName"
+                type="text"
+                autocomplete="family-name"
+                maxlength="80"
+                required
+                aria-describedby="last-name-error"
+              />
+              <span id="last-name-error" class="field-error" data-error-for="lastName"></span>
+            </label>
+          </div>
+
+          <label>
+            Email
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              inputmode="email"
+              maxlength="254"
+              required
+              aria-describedby="email-error"
+              placeholder="you@example.com"
+            />
+            <span id="email-error" class="field-error" data-error-for="email"></span>
+          </label>
+
+          <div class="honeypot" aria-hidden="true">
+            <label>
+              Website
+              <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+            </label>
+          </div>
+
+          <button class="btn primary" type="submit">Join the waitlist</button>
+          <p class="form-status" data-form-status role="status"></p>
+        </form>
       </section>
 
       <section id="how" class="panel">
-        <h2>What you’re looking at</h2>
+        <h2>How it works</h2>
         <p>
-          This page is a <strong>project display</strong> for the MessageMe
-          Android app. The real product runs on an Android phone or emulator —
-          not inside this browser.
+          MessageMe is a self-messaging reminder app. You write a note to
+          yourself, pick when it should arrive, and it shows up as a letter
+          from you — on the lock screen and in Received.
         </p>
         <ul class="features">
-          <li>Chat-style self reminders with title, date, and optional time</li>
-          <li>Default 3:00 AM local time when no time is chosen</li>
-          <li>Calendar todo view with orange / green / red / blue day colours</li>
-          <li>Envelope notifications — not alarm-clock alerts</li>
-          <li>Offline-first Room storage; optional Firebase sync later</li>
+          <li>Chat-style notes from you, not task-manager cards</li>
+          <li>Overnight letters arrive at your envelope hour</li>
+          <li>Lock-screen notification is the personal note</li>
+          <li>Quiet calendar: unopened mail, not habit streaks</li>
+          <li>Offline-first on Android; optional Firebase later</li>
         </ul>
       </section>
 
@@ -87,10 +142,10 @@
           <li>
             Clone or download the repo
             <code>r3s0lv343vr/MessageMe</code>, branch
-            <code>feature/message-me-android-app</code>.
+            <code>main</code>.
           </li>
           <li>In Android Studio: <strong>File → Open</strong> the repo folder.</li>
-          <li>Wait for Gradle sync to finish.</li>
+          <li>Wait for Gradle sync (elephant / Sync Now) to finish.</li>
           <li>
             Device Manager → create a <strong>Pixel</strong> phone with
             <strong>API 36</strong> (or API 33) → Start it.
@@ -110,8 +165,6 @@
       <a href="https://github.com/r3s0lv343vr/MessageMe">Source on GitHub</a>
     </footer>
 
-    <script>
-      document.documentElement.classList.add("ready");
-    </script>
+    <script src="/landing.js" defer></script>
   </body>
 </html>

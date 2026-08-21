@@ -83,6 +83,8 @@ Instrumentation tests need an emulator or device:
 **Vercel dashboard:** https://vercel.com/r3s0lv343vrs-projects/message-me  
 **Source:** `/web` (Root Directory `web`, Output Directory `public`)
 
+The live page is a waitlist landing: first name, last name, and a valid email. Signups POST to `/api/waitlist` and are emailed to the waitlist owner. The first FormSubmit message must be confirmed in that inbox before later signups arrive. Optional Vercel env: `WAITLIST_NOTIFY_EMAIL`.
+
 Prefer Vercel’s GitHub integration for future updates. If a deploy token was ever pasted into chat, revoke it at https://vercel.com/account/tokens and use a dashboard secret instead.
 
 ### Redeploy from the dashboard

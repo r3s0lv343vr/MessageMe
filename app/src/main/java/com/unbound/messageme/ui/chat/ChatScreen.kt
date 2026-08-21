@@ -53,9 +53,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.unbound.messageme.R
 import com.unbound.messageme.data.local.ChatMessageEntity
 import com.unbound.messageme.data.local.Priority
 import com.unbound.messageme.data.local.Recurrence
@@ -70,6 +73,7 @@ import com.unbound.messageme.ui.theme.Foam
 import com.unbound.messageme.ui.theme.Ink
 import com.unbound.messageme.ui.theme.PastelYellow
 import com.unbound.messageme.ui.theme.WaterBlue
+import com.unbound.messageme.widget.UnreadLetterPin
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -117,6 +121,7 @@ fun ChatScreen(
 
     val scheduled = remember(tasks, messages) { InboxLogic.scheduledTasks(tasks, messages) }
     val listState = rememberLazyListState()
+    val context = LocalContext.current
     LaunchedEffect(scheduled.size) {
         if (scheduled.isNotEmpty()) listState.animateScrollToItem(scheduled.lastIndex)
     }
@@ -152,6 +157,18 @@ fun ChatScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
+                Button(
+                    onClick = { UnreadLetterPin.requestPin(context) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentOrange,
+                        contentColor = Foam
+                    )
+                ) {
+                    Text(stringResource(R.string.widget_add_to_home))
+                }
                 LazyColumn(
                     Modifier
                         .weight(1f)

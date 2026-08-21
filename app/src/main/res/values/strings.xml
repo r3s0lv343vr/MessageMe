@@ -14,8 +14,11 @@
     <string name="permission_not_now">Not Now</string>
     <string name="notifications_blocked">Notifications are blocked in your phone settings. Enable them to receive your scheduled messages.</string>
     <string name="open_settings">Open Settings</string>
-    <string name="widget_unread_letter_name">Unread letter</string>
-    <string name="widget_unread_letter_description">One letter from you, with how many are still unread.</string>
+    <string name="widget_unread_letter_name">MessageMe</string>
+    <string name="widget_unread_letter_description">Unread letter from you, with how many are still unread.</string>
+    <string name="widget_add_to_home">Add unread letter to Home</string>
+    <string name="widget_pin_unsupported">This home screen cannot pin widgets. After a full Run from Android Studio, long-press the wallpaper, open Widgets, and search MessageMe.</string>
+    <string name="widget_pin_failed">Could not add the widget. In Android Studio tap Sync Now, then the top green Run (not Apply Changes), and try again.</string>
     <string name="widget_unread_letter_sender">You</string>
     <string name="widget_unread_letter_empty">No unread letters from you</string>
 </resources>

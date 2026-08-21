@@ -41,10 +41,15 @@ Firebase (`app/google-services.json`) is **not** required to open, create, edit,
 6. Settings → internal notification toggle, JSON/CSV/PDF export.
 
 ### Home-screen unread letter
-1. Leave the app: emulator **Home** (circle).
-2. Long-press the Pixel wallpaper → **Widgets** → **MessageMe** → **Unread letter**.
-3. Drop it on the home screen. It is one orange bubble from **You**, not a list.
-4. After a message arrives, the bubble shows the note and an unread count. Tap it to open that letter.
+The round **blue chat icon** on the home screen (often near YouTube) is the **app**, not the widget. The coral dot on it is a notification badge.
+
+Do **not** rely on long-press → Widgets. Pixel lists widgets alphabetically by app name, and an older install will not show MessageMe there at all.
+
+1. Android Studio: tap **Sync Now** if it appears, then the **top green Run** (full install). Do not use Apply Changes.
+2. Open MessageMe → **Scheduled** → orange **Add unread letter to Home** → confirm.
+3. If the launcher still has no MessageMe under Widgets, **restart the emulator**, Run again, then use the in-app button. You can also search **MessageMe** in the Widgets search box.
+
+The widget is a larger **orange** rounded bubble labeled **You**, with the note text.
 
 ---
 

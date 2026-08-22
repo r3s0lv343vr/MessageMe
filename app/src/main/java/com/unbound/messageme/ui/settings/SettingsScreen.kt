@@ -43,6 +43,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.unbound.messageme.R
 import com.unbound.messageme.domain.EnvelopeHour
+import com.unbound.messageme.domain.OnboardingValidation
+import com.unbound.messageme.domain.ProfileOnboarding
 import com.unbound.messageme.ui.components.WatercolorBackground
 import com.unbound.messageme.ui.theme.Ink
 import com.unbound.messageme.widget.UnreadLetterPin
@@ -57,11 +59,15 @@ fun SettingsScreen(
     envelopeHour: EnvelopeHour,
     firebaseConfigured: Boolean,
     lastExport: File?,
+    firstName: String,
+    lastName: String,
+    email: String,
     onBack: () -> Unit,
     onToggleNotifications: (Boolean) -> Unit,
     onAllowOsNotifications: () -> Unit,
     onThemeMode: (String) -> Unit,
     onEnvelopeHour: (Int, Int) -> Unit,
+    onSaveProfile: (String, String, String) -> OnboardingValidation,
     onExportJson: () -> Unit,
     onExportCsv: () -> Unit,
     onExportPdf: () -> Unit,
@@ -71,6 +77,13 @@ fun SettingsScreen(
     val context = LocalContext.current
     var importText by remember { mutableStateOf("") }
     var showEnvelopePicker by remember { mutableStateOf(false) }
+    var editFirst by remember(firstName) { mutableStateOf(firstName) }
+    var editLast by remember(lastName) { mutableStateOf(lastName) }
+    var editEmail by remember(email) { mutableStateOf(email) }
+    var firstError by remember { mutableStateOf<String?>(null) }
+    var lastError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var profileSaved by remember { mutableStateOf(false) }
 
     WatercolorBackground {
         Scaffold(
@@ -95,6 +108,54 @@ fun SettingsScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Text("You", style = MaterialTheme.typography.titleLarge, color = Ink)
+                Text(
+                    "No password. This is how MessageMe knows who the letters are from.",
+                    color = Ink.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedTextField(
+                    value = editFirst,
+                    onValueChange = { editFirst = it; firstError = null; profileSaved = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("First name") },
+                    isError = firstError != null,
+                    supportingText = firstError?.let { { Text(it) } },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = editLast,
+                    onValueChange = { editLast = it; lastError = null; profileSaved = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Last name") },
+                    isError = lastError != null,
+                    supportingText = lastError?.let { { Text(it) } },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = editEmail,
+                    onValueChange = { editEmail = it; emailError = null; profileSaved = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Email") },
+                    isError = emailError != null,
+                    supportingText = emailError?.let { { Text(it) } },
+                    singleLine = true
+                )
+                Button(onClick = {
+                    val result = ProfileOnboarding.validate(editFirst, editLast, editEmail)
+                    firstError = result.firstNameError
+                    lastError = result.lastNameError
+                    emailError = result.emailError
+                    if (result.ok) {
+                        onSaveProfile(editFirst, editLast, editEmail)
+                        profileSaved = true
+                    }
+                }) { Text("Save details") }
+                if (profileSaved) {
+                    Text("Saved.", color = Ink.copy(alpha = 0.7f))
+                }
+
+                Spacer(Modifier.height(8.dp))
                 Text("Notifications", style = MaterialTheme.typography.titleLarge, color = Ink)
                 Row(
                     Modifier.fillMaxWidth(),

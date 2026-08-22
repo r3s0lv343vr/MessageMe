@@ -35,8 +35,8 @@ If the project lives under **OneDrive** (`Documents\AI Cohort Repos\MessageMe`),
 Firebase (`app/google-services.json`) is **not** required to open, create, edit, or delete reminders offline.
 
 ### First-run smoke
-1. **Scheduled** tab: Title `Walk the dog` → Send (time optional; skip the clock for an **overnight letter** at your envelope hour. After that hour today, it becomes **tomorrow**).
-2. On first open, **Allow notifications** (recommended) or **Not Now**. Later: Settings → Deliver letters as notifications.
+1. First open: **First name**, **Last name**, **Email** → Continue. There is no password. Then **Allow notifications** (recommended) or **Not Now**. Later: Settings → You (edit details) and Deliver letters as notifications.
+2. **Scheduled** tab: Title `Walk the dog` → Send (time optional; skip the clock for an **overnight letter** at your envelope hour. After that hour today, it becomes **tomorrow**).
 3. Set time a couple of minutes ahead (use the **emulator** clock, top-left) → wait, then open **Received**: the message for that day should be there. Tap it to open only that note; Back returns to that day’s list.
 4. Hamburger → calendar: **Week of unopened mail**, unopened / not-finished tiles, tap an unopened letter.
 5. Scheduled: **Edit**, **Snooze 10m**, **Delete**.
@@ -82,6 +82,8 @@ Instrumentation tests need an emulator or device:
 **Live URL:** https://message-me-dusky.vercel.app/  
 **Vercel dashboard:** https://vercel.com/r3s0lv343vrs-projects/message-me  
 **Source:** `/web` (Root Directory `web`, Output Directory `public`)
+
+The live page collects first name, last name, and a valid email — the same passwordless details the Android app asks on first open. After that, the app goes straight to writing a letter. Website signups POST to `/api/waitlist` and are emailed to the inbox owner. The first FormSubmit message must be confirmed in that inbox before later signups arrive. Optional Vercel env: `WAITLIST_NOTIFY_EMAIL`.
 
 Prefer Vercel’s GitHub integration for future updates. If a deploy token was ever pasted into chat, revoke it at https://vercel.com/account/tokens and use a dashboard secret instead.
 

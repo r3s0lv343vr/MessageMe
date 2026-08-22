@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "npx serve public -l 3000",
     "build": "node scripts/build.js",
-    "start": "npx serve public -l 3000"
+    "start": "npx serve public -l 3000",
+    "test": "node --test lib/validateWaitlist.test.js"
   }
 }

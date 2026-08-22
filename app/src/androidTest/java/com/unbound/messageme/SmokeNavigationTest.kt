@@ -1,10 +1,13 @@
 package com.unbound.messageme
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Before
@@ -21,15 +24,29 @@ class SmokeNavigationTest {
     val rule: RuleChain = RuleChain.outerRule(hiltRule).around(composeRule)
 
     @Before
-    fun dismissFirstRunNotificationPrompt() {
+    fun completeOnboardingAndDismissNotifications() {
         composeRule.waitForIdle()
-        val appeared = runCatching {
+        val needsOnboarding = runCatching {
+            composeRule.waitUntil(timeoutMillis = 4_000) {
+                composeRule.onAllNodesWithTag("onboard-continue").fetchSemanticsNodes().isNotEmpty() ||
+                    composeRule.onAllNodesWithText("Scheduled").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onAllNodesWithTag("onboard-continue").fetchSemanticsNodes().isNotEmpty()
+        }.getOrDefault(false)
+        if (needsOnboarding) {
+            composeRule.onNodeWithTag("onboard-first-name").performTextInput("Craig")
+            composeRule.onNodeWithTag("onboard-last-name").performTextInput("Test")
+            composeRule.onNodeWithTag("onboard-email").performTextInput("craig@example.com")
+            composeRule.onNodeWithTag("onboard-continue").performClick()
+            composeRule.waitForIdle()
+        }
+        val permissionPrompt = runCatching {
             composeRule.waitUntil(timeoutMillis = 4_000) {
                 composeRule.onAllNodesWithText("Not Now").fetchSemanticsNodes().isNotEmpty()
             }
             true
         }.getOrDefault(false)
-        if (appeared) {
+        if (permissionPrompt) {
             composeRule.onNodeWithText("Not Now").performClick()
             composeRule.waitForIdle()
         }

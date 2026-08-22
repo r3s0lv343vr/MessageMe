@@ -44,8 +44,10 @@ import com.unbound.messageme.notification.NotificationHelper
 import com.unbound.messageme.ui.MessageMeViewModel
 import com.unbound.messageme.ui.calendar.CalendarScreen
 import com.unbound.messageme.ui.chat.ChatScreen
+import com.unbound.messageme.ui.components.WatercolorBackground
 import com.unbound.messageme.ui.inbox.ReceivedDayScreen
 import com.unbound.messageme.ui.inbox.ReceivedMessageScreen
+import com.unbound.messageme.ui.onboarding.OnboardingScreen
 import com.unbound.messageme.ui.settings.SettingsScreen
 import com.unbound.messageme.ui.theme.MessageMeTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -81,23 +83,28 @@ class MainActivity : ComponentActivity() {
             }
 
             MessageMeTheme(darkTheme = dark) {
-                AppNav(
-                    viewModel = viewModel,
-                    systemNotificationsBlocked = systemNotificationsBlocked,
-                    openInbox = openInbox,
-                    onOpenInboxConsumed = { openInbox = null },
-                    openReceivedDay = openReceivedDay,
-                    onOpenReceivedDayConsumed = { openReceivedDay = null },
-                    rewriteTaskId = rewriteTaskId,
-                    onRewriteConsumed = { rewriteTaskId = null },
-                    onAllowNotifications = {
-                        viewModel.markPermissionAsked()
-                        requestSystemNotificationPermission()
-                    },
-                    onDeferNotifications = {
-                        viewModel.markPermissionAsked()
-                    }
-                )
+                val onboarded by viewModel.hasCompletedOnboarding.collectAsStateWithLifecycle()
+                when (onboarded) {
+                    null -> WatercolorBackground { }
+                    false -> OnboardingScreen(onContinue = viewModel::completeOnboarding)
+                    true -> AppNav(
+                        viewModel = viewModel,
+                        systemNotificationsBlocked = systemNotificationsBlocked,
+                        openInbox = openInbox,
+                        onOpenInboxConsumed = { openInbox = null },
+                        openReceivedDay = openReceivedDay,
+                        onOpenReceivedDayConsumed = { openReceivedDay = null },
+                        rewriteTaskId = rewriteTaskId,
+                        onRewriteConsumed = { rewriteTaskId = null },
+                        onAllowNotifications = {
+                            viewModel.markPermissionAsked()
+                            requestSystemNotificationPermission()
+                        },
+                        onDeferNotifications = {
+                            viewModel.markPermissionAsked()
+                        }
+                    )
+                }
             }
         }
     }
@@ -175,6 +182,9 @@ private fun AppNav(
     val lastExport by viewModel.lastExport.collectAsStateWithLifecycle()
     val envelopeHour by viewModel.envelopeHour.collectAsStateWithLifecycle()
     val seenEnvelopeHint by viewModel.seenEnvelopeHint.collectAsStateWithLifecycle()
+    val firstName by viewModel.firstName.collectAsStateWithLifecycle()
+    val lastName by viewModel.lastName.collectAsStateWithLifecycle()
+    val email by viewModel.email.collectAsStateWithLifecycle()
     val hasAskedPermission by viewModel.hasAskedPermission.collectAsStateWithLifecycle()
     val pendingPermissionPrompt by viewModel.pendingPermissionPrompt.collectAsStateWithLifecycle()
     val notice by viewModel.notice.collectAsStateWithLifecycle()
@@ -385,11 +395,15 @@ private fun AppNav(
                     envelopeHour = envelopeHour,
                     firebaseConfigured = viewModel.firebaseConfigured,
                     lastExport = lastExport,
+                    firstName = firstName,
+                    lastName = lastName,
+                    email = email,
                     onBack = { navController.popBackStack() },
                     onToggleNotifications = viewModel::setNotificationsEnabled,
                     onAllowOsNotifications = onAllowNotifications,
                     onThemeMode = viewModel::setThemeMode,
                     onEnvelopeHour = viewModel::setEnvelopeHour,
+                    onSaveProfile = viewModel::completeOnboarding,
                     onExportJson = viewModel::exportJson,
                     onExportCsv = viewModel::exportCsv,
                     onExportPdf = viewModel::exportPdf,

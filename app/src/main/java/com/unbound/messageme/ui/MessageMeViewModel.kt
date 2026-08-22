@@ -12,12 +12,15 @@ import com.unbound.messageme.data.repository.MessageRepository
 import com.unbound.messageme.data.sync.CloudSync
 import com.unbound.messageme.domain.AiScheduleSuggestions
 import com.unbound.messageme.domain.EnvelopeHour
+import com.unbound.messageme.domain.OnboardingValidation
+import com.unbound.messageme.domain.ProfileOnboarding
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
@@ -60,6 +63,25 @@ class MessageMeViewModel @Inject constructor(
 
     val seenEnvelopeHint = preferences.seenEnvelopeHint
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val firstName = preferences.firstName
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    val lastName = preferences.lastName
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    val email = preferences.email
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    private val onboardedLocally = MutableStateFlow(false)
+
+    /** Null until DataStore has loaded, so first-run UI does not flash for returning users. */
+    val hasCompletedOnboarding = combine(
+        preferences.hasCompletedOnboarding,
+        onboardedLocally
+    ) { stored, local -> stored || local }
+        .map<Boolean, Boolean?> { it }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Null until DataStore has loaded, so first-run UI does not flash for returning users. */
     val hasAskedPermission = preferences.hasAskedNotificationPermission
@@ -163,6 +185,16 @@ class MessageMeViewModel @Inject constructor(
         preferences.setSeenEnvelopeHint(true)
     }
 
+    fun completeOnboarding(firstName: String, lastName: String, email: String): OnboardingValidation {
+        val result = ProfileOnboarding.validate(firstName, lastName, email)
+        val profile = result.value ?: return result
+        onboardedLocally.value = true
+        viewModelScope.launch {
+            preferences.setOnboardingProfile(profile.firstName, profile.lastName, profile.email)
+        }
+        return result
+    }
+
     fun markPermissionAsked() = viewModelScope.launch {
         preferences.setAskedNotificationPermission(true)
         _pendingPermissionPrompt.value = false
@@ -212,6 +244,7 @@ class MessageMeViewModel @Inject constructor(
     }
 
     fun considerFirstRunNotificationPrompt(systemNotificationsAllowed: Boolean) {
+        if (hasCompletedOnboarding.value != true) return
         if (hasAskedPermission.value != false) return
         if (systemNotificationsAllowed) {
             viewModelScope.launch { preferences.setAskedNotificationPermission(true) }

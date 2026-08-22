@@ -188,6 +188,9 @@ class MessageMeViewModel @Inject constructor(
     fun completeOnboarding(firstName: String, lastName: String, email: String): OnboardingValidation {
         val result = ProfileOnboarding.validate(firstName, lastName, email)
         val profile = result.value ?: return result
+        if (!ProfileOnboarding.canAccessApp(true, profile.firstName, profile.lastName, profile.email)) {
+            return result.copy(ok = false)
+        }
         onboardedLocally.value = true
         viewModelScope.launch {
             preferences.setOnboardingProfile(profile.firstName, profile.lastName, profile.email)

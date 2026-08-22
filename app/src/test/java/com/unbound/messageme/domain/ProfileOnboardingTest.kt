@@ -37,4 +37,16 @@ class ProfileOnboardingTest {
             OnboardingProfile("Craig", "Ferguson", "craig.j@example.com")
         )
     }
+
+    @Test
+    fun cannotAccessAppUntilOnboardingIsCompleteAndValid() {
+        assertThat(ProfileOnboarding.canAccessApp(false, "Craig", "Ferguson", "craig@example.com"))
+            .isFalse()
+        assertThat(ProfileOnboarding.canAccessApp(true, "", "Ferguson", "craig@example.com"))
+            .isFalse()
+        assertThat(ProfileOnboarding.canAccessApp(true, "Craig", "Ferguson", "not-an-email"))
+            .isFalse()
+        assertThat(ProfileOnboarding.canAccessApp(true, "Craig", "Ferguson", "craig@example.com"))
+            .isTrue()
+    }
 }

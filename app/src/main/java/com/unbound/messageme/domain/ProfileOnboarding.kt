@@ -61,4 +61,10 @@ object ProfileOnboarding {
             )
         )
     }
+
+    /** The rest of the app is closed until this returns true. */
+    fun canAccessApp(onboarded: Boolean, firstName: String, lastName: String, email: String): Boolean {
+        if (!onboarded) return false
+        return validate(firstName, lastName, email).ok
+    }
 }

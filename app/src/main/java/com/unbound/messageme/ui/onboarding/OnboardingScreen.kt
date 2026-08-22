@@ -1,5 +1,6 @@
 package com.unbound.messageme.ui.onboarding
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -45,17 +46,25 @@ fun OnboardingScreen(
     var firstError by remember { mutableStateOf<String?>(null) }
     var lastError by remember { mutableStateOf<String?>(null) }
     var emailError by remember { mutableStateOf<String?>(null) }
+    var attempted by remember { mutableStateOf(false) }
+
+    val preview = ProfileOnboarding.validate(firstName, lastName, email)
+    val canContinue = preview.ok
 
     fun submit() {
-        val preview = ProfileOnboarding.validate(firstName, lastName, email)
+        attempted = true
         firstError = preview.firstNameError
         lastError = preview.lastNameError
         emailError = preview.emailError
-        if (!preview.ok) return
+        if (!canContinue) return
         val saved = onContinue(firstName, lastName, email)
         firstError = saved.firstNameError
         lastError = saved.lastNameError
         emailError = saved.emailError
+    }
+
+    BackHandler {
+        // Stay on this screen. The rest of the app is unavailable until onboarding succeeds.
     }
 
     WatercolorBackground {
@@ -80,7 +89,7 @@ fun OnboardingScreen(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "First name, last name, and a valid email. There is no password. After this, you can write a letter.",
+                "You must complete this before you can use MessageMe. First name, last name, and a valid email. There is no password. Until then, the rest of the app stays closed.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = Ink.copy(alpha = 0.82f)
             )
@@ -95,8 +104,8 @@ fun OnboardingScreen(
                     .fillMaxWidth()
                     .testTag("onboard-first-name"),
                 label = { Text("First name") },
-                isError = firstError != null,
-                supportingText = firstError?.let { { Text(it) } },
+                isError = firstError != null || (attempted && preview.firstNameError != null),
+                supportingText = (firstError ?: preview.firstNameError.takeIf { attempted })?.let { { Text(it) } },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Words,
@@ -113,8 +122,8 @@ fun OnboardingScreen(
                     .fillMaxWidth()
                     .testTag("onboard-last-name"),
                 label = { Text("Last name") },
-                isError = lastError != null,
-                supportingText = lastError?.let { { Text(it) } },
+                isError = lastError != null || (attempted && preview.lastNameError != null),
+                supportingText = (lastError ?: preview.lastNameError.takeIf { attempted })?.let { { Text(it) } },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Words,
@@ -131,8 +140,8 @@ fun OnboardingScreen(
                     .fillMaxWidth()
                     .testTag("onboard-email"),
                 label = { Text("Email") },
-                isError = emailError != null,
-                supportingText = emailError?.let { { Text(it) } },
+                isError = emailError != null || (attempted && preview.emailError != null),
+                supportingText = (emailError ?: preview.emailError.takeIf { attempted })?.let { { Text(it) } },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
@@ -143,6 +152,7 @@ fun OnboardingScreen(
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = { submit() },
+                enabled = canContinue,
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("onboard-continue"),

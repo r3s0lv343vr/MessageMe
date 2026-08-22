@@ -87,7 +87,7 @@
       }
       form.reset();
       showErrors({});
-      setStatus("You're on the list. We'll only write about MessageMe.", "success");
+      setStatus("You're in. Open the Android app, enter the same details if asked, and write a letter. No password.", "success");
     } catch (error) {
       setStatus(error.message || "Could not save your details. Please try again.", "error");
     } finally {

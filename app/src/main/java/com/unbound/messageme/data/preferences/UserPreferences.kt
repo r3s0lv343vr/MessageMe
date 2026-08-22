@@ -26,6 +26,10 @@ class UserPreferences @Inject constructor(
     private val envelopeHourKey = intPreferencesKey("envelope_hour")
     private val envelopeMinuteKey = intPreferencesKey("envelope_minute")
     private val seenEnvelopeHintKey = booleanPreferencesKey("seen_envelope_hint")
+    private val firstNameKey = stringPreferencesKey("profile_first_name")
+    private val lastNameKey = stringPreferencesKey("profile_last_name")
+    private val emailKey = stringPreferencesKey("profile_email")
+    private val onboardedKey = booleanPreferencesKey("profile_onboarded")
 
     val internalNotificationsEnabled: Flow<Boolean> =
         context.dataStore.data.map { it[notificationsEnabledKey] ?: true }
@@ -49,6 +53,18 @@ class UserPreferences @Inject constructor(
 
     val seenEnvelopeHint: Flow<Boolean> =
         context.dataStore.data.map { it[seenEnvelopeHintKey] ?: false }
+
+    val firstName: Flow<String> =
+        context.dataStore.data.map { it[firstNameKey] ?: "" }
+
+    val lastName: Flow<String> =
+        context.dataStore.data.map { it[lastNameKey] ?: "" }
+
+    val email: Flow<String> =
+        context.dataStore.data.map { it[emailKey] ?: "" }
+
+    val hasCompletedOnboarding: Flow<Boolean> =
+        context.dataStore.data.map { it[onboardedKey] ?: false }
 
     suspend fun setInternalNotificationsEnabled(enabled: Boolean) {
         context.dataStore.edit { it[notificationsEnabledKey] = enabled }
@@ -75,5 +91,14 @@ class UserPreferences @Inject constructor(
 
     suspend fun setSeenEnvelopeHint(seen: Boolean) {
         context.dataStore.edit { it[seenEnvelopeHintKey] = seen }
+    }
+
+    suspend fun setOnboardingProfile(firstName: String, lastName: String, email: String) {
+        context.dataStore.edit {
+            it[firstNameKey] = firstName
+            it[lastNameKey] = lastName
+            it[emailKey] = email
+            it[onboardedKey] = true
+        }
     }
 }

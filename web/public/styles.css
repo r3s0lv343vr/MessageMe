@@ -314,6 +314,27 @@ code {
   background: rgba(255, 253, 248, 0.7);
 }
 
+.legal {
+  max-width: 42rem;
+}
+
+.legal h1 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.2rem);
+}
+
+.legal h2 {
+  margin: 1.5rem 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.legal-updated {
+  margin: 0 0 1rem;
+  color: rgba(30, 42, 50, 0.65);
+}
+
 footer {
   display: flex;
   flex-wrap: wrap;

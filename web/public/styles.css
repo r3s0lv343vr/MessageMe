@@ -73,6 +73,20 @@ nav a {
   font-weight: 600;
 }
 
+nav a.tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+}
+
+nav a.tab[aria-current="page"] {
+  background: rgba(255, 253, 248, 0.85);
+  border-color: rgba(74, 144, 200, 0.35);
+  color: var(--blue-deep);
+}
+
 .hero {
   min-height: calc(100vh - 5.5rem);
   display: grid;
@@ -358,7 +372,7 @@ footer a {
 }
 
 @media (max-width: 720px) {
-  nav a:not(.btn) {
+  nav a.section-link {
     display: none;
   }
 

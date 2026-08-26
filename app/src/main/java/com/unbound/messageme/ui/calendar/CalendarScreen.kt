@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -83,7 +84,8 @@ fun CalendarScreen(
     onAcknowledge: (String) -> Unit,
     onDelete: (String) -> Unit,
     onEdit: (String) -> Unit,
-    onOpenLetter: (ChatMessageEntity) -> Unit
+    onOpenLetter: (ChatMessageEntity) -> Unit,
+    onOpenTask: (String) -> Unit
 ) {
     var month by remember { mutableStateOf(YearMonth.now(TimeDefaults.zoneId())) }
     var selectedDate by remember { mutableStateOf(LocalDate.now(TimeDefaults.zoneId())) }
@@ -191,7 +193,12 @@ fun CalendarScreen(
                         color = Ink.copy(alpha = 0.7f)
                     )
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         items(lettersToShow, key = { "letter-${it.id}" }) { letter ->
                             UnopenedLetterRow(letter, tasks) { onOpenLetter(letter) }
                         }
@@ -201,7 +208,8 @@ fun CalendarScreen(
                                 { onComplete(task.id) },
                                 { onAcknowledge(task.id) },
                                 { onDelete(task.id) },
-                                { onEdit(task.id) }
+                                { onEdit(task.id) },
+                                { onOpenTask(task.id) }
                             )
                         }
                     }
@@ -255,13 +263,15 @@ private fun MonthGrid(
                     Box(
                         Modifier
                             .weight(1f)
-                            .aspectRatio(1f)
-                            .padding(3.dp),
+                            .height(40.dp)
+                            .padding(2.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         if (date != null) {
                             val status = CalendarColorLogic.statusForDay(date, tasks, messages = messages)
-                            DayCell(date.dayOfMonth, status, date == selectedDate) { onSelect(date) }
+                            Box(Modifier.size(36.dp)) {
+                                DayCell(date.dayOfMonth, status, date == selectedDate) { onSelect(date) }
+                            }
                         }
                     }
                 }
@@ -361,7 +371,8 @@ private fun TaskRow(
     onComplete: () -> Unit,
     onAcknowledge: () -> Unit,
     onDelete: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    onOpen: () -> Unit
 ) {
     val time = Instant.ofEpochMilli(task.dueAtEpochMillis)
         .atZone(TimeDefaults.zoneId())
@@ -382,7 +393,12 @@ private fun TaskRow(
             .background(Foam.copy(alpha = 0.85f))
             .padding(12.dp)
     ) {
-        Text(task.title, color = Ink, style = MaterialTheme.typography.titleMedium)
+        Text(
+            task.title,
+            color = Ink,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.clickable(onClick = onOpen)
+        )
         Text(
             "$time · $statusLabel",
             color = Ink.copy(alpha = 0.7f),

@@ -65,4 +65,25 @@ class InboxLogicTest {
         val received = InboxLogic.receivedOn(messages, day, zone)
         assertThat(received.map { it.id }).containsExactly("2", "3").inOrder()
     }
+
+    @Test
+    fun `note to read uses title when body is blank`() {
+        assertThat(InboxLogic.noteToRead(task("a").copy(body = "  "))).isEqualTo("Note a")
+    }
+
+    @Test
+    fun `note to read joins title and body`() {
+        assertThat(InboxLogic.noteToRead(task("a"))).isEqualTo("Note a\n\nbody")
+    }
+
+    @Test
+    fun `message to open prefers compose note and shows title plus body`() {
+        val t = task("a")
+        val opened = InboxLogic.messageToOpen(
+            t,
+            listOf(message("1", "a", MessageKind.USER_COMPOSE, 8).copy(body = "📌 old"))
+        )
+        assertThat(opened.id).isEqualTo("1")
+        assertThat(opened.body).isEqualTo("Note a\n\nbody")
+    }
 }

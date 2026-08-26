@@ -35,6 +35,7 @@ import com.unbound.messageme.ui.components.WatercolorBackground
 import com.unbound.messageme.ui.theme.Ink
 import com.unbound.messageme.ui.theme.WaterBlue
 import com.unbound.messageme.ui.theme.WaterBlueDeep
+import com.unbound.messageme.ui.theme.readableOutlinedTextFieldColors
 
 @Composable
 fun OnboardingScreen(
@@ -50,6 +51,7 @@ fun OnboardingScreen(
 
     val preview = ProfileOnboarding.validate(firstName, lastName, email)
     val canContinue = preview.ok
+    val fieldColors = readableOutlinedTextFieldColors()
 
     fun submit() {
         attempted = true
@@ -107,6 +109,7 @@ fun OnboardingScreen(
                 isError = firstError != null || (attempted && preview.firstNameError != null),
                 supportingText = (firstError ?: preview.firstNameError.takeIf { attempted })?.let { { Text(it) } },
                 singleLine = true,
+                colors = fieldColors,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Next
@@ -125,6 +128,7 @@ fun OnboardingScreen(
                 isError = lastError != null || (attempted && preview.lastNameError != null),
                 supportingText = (lastError ?: preview.lastNameError.takeIf { attempted })?.let { { Text(it) } },
                 singleLine = true,
+                colors = fieldColors,
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Words,
                     imeAction = ImeAction.Next
@@ -143,6 +147,7 @@ fun OnboardingScreen(
                 isError = emailError != null || (attempted && preview.emailError != null),
                 supportingText = (emailError ?: preview.emailError.takeIf { attempted })?.let { { Text(it) } },
                 singleLine = true,
+                colors = fieldColors,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
                     imeAction = ImeAction.Done

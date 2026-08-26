@@ -40,4 +40,30 @@ object InboxLogic {
                 task.id !in receivedTaskIds
         }.sortedBy { it.dueAtEpochMillis }
     }
+
+    fun noteToRead(task: TaskEntity): String {
+        val title = task.title.trim()
+        val body = task.body.trim()
+        return when {
+            body.isEmpty() -> title
+            title.isEmpty() -> body
+            else -> "$title\n\n$body"
+        }
+    }
+
+    fun messageToOpen(
+        task: TaskEntity,
+        messages: List<ChatMessageEntity>
+    ): ChatMessageEntity {
+        val existing = messages.firstOrNull {
+            it.taskId == task.id && it.kind == MessageKind.USER_COMPOSE
+        }
+        return (existing ?: ChatMessageEntity(
+            id = "open-${task.id}",
+            taskId = task.id,
+            body = "",
+            kind = MessageKind.USER_COMPOSE,
+            sentAtEpochMillis = task.createdAtEpochMillis
+        )).copy(body = noteToRead(task))
+    }
 }

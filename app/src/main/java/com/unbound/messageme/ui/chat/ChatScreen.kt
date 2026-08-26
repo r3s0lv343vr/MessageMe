@@ -1,6 +1,7 @@
 package com.unbound.messageme.ui.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,9 +9,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -55,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,6 +83,7 @@ import com.unbound.messageme.ui.theme.Foam
 import com.unbound.messageme.ui.theme.Ink
 import com.unbound.messageme.ui.theme.PastelYellow
 import com.unbound.messageme.ui.theme.WaterBlue
+import com.unbound.messageme.ui.theme.readableOutlinedTextFieldColors
 import com.unbound.messageme.widget.UnreadLetterPin
 import java.time.Instant
 import java.time.LocalDate
@@ -100,6 +106,7 @@ fun ChatScreen(
     onReschedule: (String, LocalDate, LocalTime?) -> Unit,
     onSnooze: (String) -> Unit,
     onDelete: (String) -> Unit,
+    onOpenTask: (String) -> Unit,
     envelopeHour: EnvelopeHour = EnvelopeHour.DEFAULT,
     showEnvelopeHint: Boolean = false,
     onDismissEnvelopeHint: () -> Unit = {}
@@ -175,6 +182,7 @@ fun ChatScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
+                    .imePadding()
             ) {
                 if (showEnvelopeHint) {
                     Column(
@@ -228,6 +236,7 @@ fun ChatScreen(
                     items(scheduled, key = { it.id }) { task ->
                         ScheduledCard(
                             task = task,
+                            onOpen = { onOpenTask(task.id) },
                             onEdit = { onBeginEdit(task.id) },
                             onReschedule = {
                                 rescheduleTaskId = task.id
@@ -239,7 +248,8 @@ fun ChatScreen(
                     }
                 }
 
-                if (suggestions.isNotEmpty()) {
+                val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+                if (suggestions.isNotEmpty() && !imeVisible) {
                     Column(
                         Modifier
                             .fillMaxWidth()
@@ -367,6 +377,7 @@ fun ChatScreen(
 @Composable
 private fun ScheduledCard(
     task: TaskEntity,
+    onOpen: () -> Unit,
     onEdit: () -> Unit,
     onReschedule: () -> Unit,
     onSnooze: () -> Unit,
@@ -389,13 +400,15 @@ private fun ScheduledCard(
             .background(BubbleSelf)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-        Text(task.title, color = Foam, style = MaterialTheme.typography.bodyLarge)
-        if (task.body.isNotBlank()) {
+        Column(Modifier.clickable(onClick = onOpen)) {
+            Text(task.title, color = Foam, style = MaterialTheme.typography.bodyLarge)
+            if (task.body.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(task.body, color = Foam.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyMedium)
+            }
             Spacer(Modifier.height(4.dp))
-            Text(task.body, color = Foam.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyMedium)
+            Text("Sends $dueText", color = Foam.copy(alpha = 0.75f), style = MaterialTheme.typography.bodyMedium)
         }
-        Spacer(Modifier.height(4.dp))
-        Text("Sends $dueText", color = Foam.copy(alpha = 0.75f), style = MaterialTheme.typography.bodyMedium)
         Row {
             TextButton(onClick = onEdit) { Text("Edit", color = Foam) }
             TextButton(onClick = onReschedule) { Text("Reschedule", color = Foam) }
@@ -532,19 +545,22 @@ private fun Composer(
             )
         }
         Spacer(Modifier.height(6.dp))
+        val fieldColors = readableOutlinedTextFieldColors()
         OutlinedTextField(
             value = title,
             onValueChange = onTitle, Modifier.fillMaxWidth(),
-            placeholder = { Text("Title") },
-            singleLine = true
+            placeholder = { Text("Title", color = Ink.copy(alpha = 0.45f)) },
+            singleLine = true,
+            colors = fieldColors
         )
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = body,
                 onValueChange = onBody, Modifier.weight(1f),
-                placeholder = { Text("Message yourself…") },
-                maxLines = 3
+                placeholder = { Text("Message yourself…", color = Ink.copy(alpha = 0.45f)) },
+                maxLines = 6,
+                colors = fieldColors
             )
             Button(
                 onClick = onSend,
@@ -568,8 +584,9 @@ private fun Composer(
                     value = customCategory,
                     onValueChange = { customCategory = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("e.g. Errands") },
-                    singleLine = true
+                    placeholder = { Text("e.g. Errands", color = Ink.copy(alpha = 0.45f)) },
+                    singleLine = true,
+                    colors = readableOutlinedTextFieldColors()
                 )
             },
             confirmButton = {

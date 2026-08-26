@@ -9,6 +9,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inbox
@@ -26,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -51,6 +54,7 @@ import com.unbound.messageme.ui.onboarding.OnboardingScreen
 import com.unbound.messageme.ui.settings.SettingsScreen
 import com.unbound.messageme.ui.theme.MessageMeTheme
 import dagger.hilt.android.AndroidEntryPoint
+import java.time.Instant
 import java.time.LocalDate
 
 data class OpenInboxTarget(val dateIso: String, val messageId: String)
@@ -192,8 +196,11 @@ private fun AppNav(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val today = LocalDate.now(TimeDefaults.zoneId()).toString()
-    val showBottomBar = currentRoute == "scheduled" ||
-        (currentRoute?.startsWith("received/") == true && currentRoute?.contains("/message/") != true)
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val showBottomBar = !imeVisible && (
+        currentRoute == "scheduled" ||
+            (currentRoute?.startsWith("received/") == true && currentRoute?.contains("/message/") != true)
+        )
 
     LaunchedEffect(Unit) {
         viewModel.refreshAlarms()
@@ -291,6 +298,7 @@ private fun AppNav(
                     onReschedule = viewModel::reschedule,
                     onSnooze = viewModel::snooze,
                     onDelete = viewModel::delete,
+                    onOpenTask = { taskId -> navController.navigate("letter/$taskId") },
                     envelopeHour = envelopeHour,
                     showEnvelopeHint = !seenEnvelopeHint,
                     onDismissEnvelopeHint = viewModel::markEnvelopeHintSeen
@@ -384,7 +392,41 @@ private fun AppNav(
                             launchSingleTop = true
                         }
                         navController.navigate("received/$day/message/${message.id}")
-                    }
+                    },
+                    onOpenTask = { taskId -> navController.navigate("letter/$taskId") }
+                )
+            }
+            composable(
+                "letter/{taskId}",
+                arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+            ) { entry ->
+                val taskId = entry.arguments?.getString("taskId")
+                val task = tasks.find { it.id == taskId }
+                val message = task?.let { InboxLogic.messageToOpen(it, messages) }
+                val date = task?.let {
+                    Instant.ofEpochMilli(it.dueAtEpochMillis)
+                        .atZone(TimeDefaults.zoneId())
+                        .toLocalDate()
+                } ?: LocalDate.now(TimeDefaults.zoneId())
+                ReceivedMessageScreen(
+                    date = date,
+                    message = message,
+                    task = task,
+                    onBack = { navController.popBackStack() },
+                    onAcknowledge = viewModel::acknowledge,
+                    onComplete = viewModel::complete,
+                    onDismiss = viewModel::dismiss,
+                    onReschedule = viewModel::reschedule,
+                    onSnooze = viewModel::snooze,
+                    onEdit = { id ->
+                        viewModel.beginEdit(id)
+                        navController.navigate("scheduled") {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onDelete = viewModel::delete
                 )
             }
             composable("settings") {

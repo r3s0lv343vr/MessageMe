@@ -1,10 +1,14 @@
 package com.unbound.messageme.ui.calendar
 
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,17 +38,32 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import com.unbound.messageme.data.local.CalendarDayStatus
 import com.unbound.messageme.data.local.ChatMessageEntity
 import com.unbound.messageme.data.local.TaskEntity
@@ -71,8 +91,14 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 private enum class CalendarMode { MONTH, WEEK, DAY }
+
+private fun monthWeekCount(month: YearMonth): Int {
+    val sundayFirstOffset = month.atDay(1).dayOfWeek.value % 7
+    return (sundayFirstOffset + month.lengthOfMonth() + 6) / 7
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,15 +117,20 @@ fun CalendarScreen(
     var selectedDate by remember { mutableStateOf(LocalDate.now(TimeDefaults.zoneId())) }
     var mode by remember { mutableStateOf(CalendarMode.MONTH) }
     var filter by remember { mutableStateOf("all") }
+    val collapseState = remember { mutableFloatStateOf(0f) }
+    var collapse by collapseState
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(mode) {
+        collapse = 0f
+    }
 
     val weekHonesty = remember(messages, tasks, selectedDate) {
         SelfHonestyLogic.weekHonesty(messages, tasks, selectedDate)
     }
     val unopenedToday = remember(messages, tasks, selectedDate) {
         SelfHonestyLogic.unopenedLetters(messages, tasks, selectedDate)
-    }
-    val ackedToday = remember(messages, tasks, selectedDate) {
-        SelfHonestyLogic.acknowledgedUnfinished(tasks, selectedDate)
     }
     val dayTasks = remember(tasks, selectedDate, filter) {
         tasks.filter {
@@ -132,85 +163,197 @@ fun CalendarScreen(
                 )
             }
         ) { padding ->
-            Column(
+            BoxWithConstraints(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
                     .padding(horizontal = 16.dp)
             ) {
-                Text(
-                    SelfHonestyLogic.WEEK_HEADLINE,
-                    color = Ink,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    weekHonesty.body(),
-                    color = Ink.copy(alpha = 0.75f),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(CalendarMode.MONTH, CalendarMode.WEEK, CalendarMode.DAY).forEach { m ->
-                        FilterChip(
-                            selected = mode == m,
-                            onClick = { mode = m },
-                            label = { Text(m.name.lowercase().replaceFirstChar { it.titlecase() }) }
+                val density = LocalDensity.current
+                val cell = maxWidth / 7
+                val weeks = monthWeekCount(month)
+                val expandedGrid = cell * weeks
+                val collapsedGrid = (maxHeight * 0.18f).coerceIn(cell * 1.5f, cell * 2.2f)
+                val collapseRangePx = with(density) {
+                    (expandedGrid - collapsedGrid).toPx().coerceAtLeast(1f)
+                }
+                val gridHeight = lerp(expandedGrid, collapsedGrid, collapse)
+                val scaleY = if (expandedGrid > 0.dp) {
+                    with(density) { gridHeight.toPx() / expandedGrid.toPx() }
+                } else {
+                    1f
+                }
+
+                val nestedScroll = remember(collapseRangePx, mode, listState) {
+                    object : NestedScrollConnection {
+                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                            if (mode != CalendarMode.MONTH) return Offset.Zero
+                            val delta = available.y
+                            if (delta < 0f && collapseState.floatValue < 1f) {
+                                val old = collapseState.floatValue
+                                collapseState.floatValue =
+                                    (old + (-delta / collapseRangePx)).coerceIn(0f, 1f)
+                                val consumed = (collapseState.floatValue - old) * collapseRangePx
+                                return Offset(0f, -consumed)
+                            }
+                            return Offset.Zero
+                        }
+
+                        override fun onPostScroll(
+                            consumed: Offset,
+                            available: Offset,
+                            source: NestedScrollSource
+                        ): Offset {
+                            if (mode != CalendarMode.MONTH) return Offset.Zero
+                            val atTop = listState.firstVisibleItemIndex == 0 &&
+                                listState.firstVisibleItemScrollOffset == 0
+                            val delta = available.y
+                            if (delta > 0f && atTop && collapseState.floatValue > 0f) {
+                                val old = collapseState.floatValue
+                                collapseState.floatValue =
+                                    (old - (delta / collapseRangePx)).coerceIn(0f, 1f)
+                                val consumedPx = (old - collapseState.floatValue) * collapseRangePx
+                                return Offset(0f, consumedPx)
+                            }
+                            return Offset.Zero
+                        }
+
+                        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                            if (mode == CalendarMode.MONTH) {
+                                val target = if (collapseState.floatValue >= 0.45f) 1f else 0f
+                                animate(
+                                    initialValue = collapseState.floatValue,
+                                    targetValue = target,
+                                    animationSpec = tween(180)
+                                ) { value, _ -> collapseState.floatValue = value }
+                            }
+                            return Velocity.Zero
+                        }
+                    }
+                }
+
+                Column(Modifier.fillMaxSize()) {
+                    Text(
+                        SelfHonestyLogic.WEEK_HEADLINE,
+                        color = Ink,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    if (collapse < 0.5f) {
+                        Text(
+                            weekHonesty.body(),
+                            color = Ink.copy(alpha = 0.75f),
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
-                }
-                Spacer(Modifier.height(8.dp))
-                when (mode) {
-                    CalendarMode.MONTH -> {
-                        MonthHeader(month, { month = month.minusMonths(1) }, { month = month.plusMonths(1) })
-                        WeekdayHeader()
-                        MonthGrid(month, tasks, messages, selectedDate) { selectedDate = it }
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(CalendarMode.MONTH, CalendarMode.WEEK, CalendarMode.DAY).forEach { m ->
+                            FilterChip(
+                                selected = mode == m,
+                                onClick = { mode = m },
+                                label = { Text(m.name.lowercase().replaceFirstChar { it.titlecase() }) }
+                            )
+                        }
                     }
-                    CalendarMode.WEEK -> WeekStrip(selectedDate, tasks, messages) { selectedDate = it }
-                    CalendarMode.DAY -> Text(
-                        selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d yyyy")),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = Ink
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                LegendRow()
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = filter == "all", onClick = { filter = "all" }, label = { Text("All") })
-                    FilterChip(selected = filter == "unopened", onClick = { filter = "unopened" }, label = { Text("Unopened") })
-                    FilterChip(selected = filter == "acked", onClick = { filter = "acked" }, label = { Text("Not finished") })
-                    FilterChip(selected = filter == "done", onClick = { filter = "done" }, label = { Text("Done") })
-                }
-                Spacer(Modifier.height(8.dp))
-                if (lettersToShow.isEmpty() && tasksToShow.isEmpty()) {
-                    Text(
-                        when (filter) {
-                            "unopened" -> "No unopened letters on this day."
-                            "acked" -> "Nothing acknowledged and unfinished on this day."
-                            "done" -> "Nothing finished on this day."
-                            else -> "No mail on this day."
-                        },
-                        color = Ink.copy(alpha = 0.7f)
-                    )
-                } else {
+                    Spacer(Modifier.height(8.dp))
+                    when (mode) {
+                        CalendarMode.MONTH -> {
+                            MonthHeader(month, { month = month.minusMonths(1) }, { month = month.plusMonths(1) })
+                            WeekdayHeader()
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(gridHeight)
+                                    .clipToBounds()
+                                    .pointerInput(collapseRangePx) {
+                                        detectVerticalDragGestures(
+                                            onVerticalDrag = { _, dragAmount ->
+                                                collapseState.floatValue =
+                                                    (collapseState.floatValue - dragAmount / collapseRangePx)
+                                                        .coerceIn(0f, 1f)
+                                            },
+                                            onDragEnd = {
+                                                scope.launch {
+                                                    val target =
+                                                        if (collapseState.floatValue >= 0.45f) 1f else 0f
+                                                    animate(
+                                                        initialValue = collapseState.floatValue,
+                                                        targetValue = target,
+                                                        animationSpec = tween(180)
+                                                    ) { value, _ -> collapseState.floatValue = value }
+                                                }
+                                            }
+                                        )
+                                    }
+                            ) {
+                                Box(
+                                    Modifier.graphicsLayer {
+                                        this.scaleY = scaleY
+                                        transformOrigin = TransformOrigin(0.5f, 0f)
+                                    }
+                                ) {
+                                    MonthGrid(month, tasks, messages, selectedDate, cell) {
+                                        selectedDate = it
+                                    }
+                                }
+                            }
+                        }
+                        CalendarMode.WEEK -> WeekStrip(selectedDate, tasks, messages) { selectedDate = it }
+                        CalendarMode.DAY -> Text(
+                            selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d yyyy")),
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = Ink
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    if (collapse < 0.7f) {
+                        LegendRow()
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = filter == "all", onClick = { filter = "all" }, label = { Text("All") })
+                        FilterChip(selected = filter == "unopened", onClick = { filter = "unopened" }, label = { Text("Unopened") })
+                        FilterChip(selected = filter == "acked", onClick = { filter = "acked" }, label = { Text("Not finished") })
+                        FilterChip(selected = filter == "done", onClick = { filter = "done" }, label = { Text("Done") })
+                    }
+                    Spacer(Modifier.height(8.dp))
                     LazyColumn(
                         modifier = Modifier
                             .weight(1f)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .then(
+                                if (mode == CalendarMode.MONTH) Modifier.nestedScroll(nestedScroll)
+                                else Modifier
+                            ),
+                        state = listState,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(lettersToShow, key = { "letter-${it.id}" }) { letter ->
-                            UnopenedLetterRow(letter, tasks) { onOpenLetter(letter) }
-                        }
-                        items(tasksToShow, key = { it.id }) { task ->
-                            TaskRow(
-                                task,
-                                { onComplete(task.id) },
-                                { onAcknowledge(task.id) },
-                                { onDelete(task.id) },
-                                { onEdit(task.id) },
-                                { onOpenTask(task.id) }
-                            )
+                        if (lettersToShow.isEmpty() && tasksToShow.isEmpty()) {
+                            item {
+                                Text(
+                                    when (filter) {
+                                        "unopened" -> "No unopened letters on this day."
+                                        "acked" -> "Nothing acknowledged and unfinished on this day."
+                                        "done" -> "Nothing finished on this day."
+                                        else -> "No mail on this day."
+                                    },
+                                    color = Ink.copy(alpha = 0.7f)
+                                )
+                            }
+                        } else {
+                            items(lettersToShow, key = { "letter-${it.id}" }) { letter ->
+                                UnopenedLetterRow(letter, tasks) { onOpenLetter(letter) }
+                            }
+                            items(tasksToShow, key = { it.id }) { task ->
+                                TaskRow(
+                                    task,
+                                    { onComplete(task.id) },
+                                    { onAcknowledge(task.id) },
+                                    { onDelete(task.id) },
+                                    { onEdit(task.id) },
+                                    { onOpenTask(task.id) }
+                                )
+                            }
                         }
                     }
                 }
@@ -247,6 +390,7 @@ private fun MonthGrid(
     tasks: List<TaskEntity>,
     messages: List<ChatMessageEntity>,
     selectedDate: LocalDate,
+    cellHeight: Dp,
     onSelect: (LocalDate) -> Unit
 ) {
     val firstDay = month.atDay(1)
@@ -263,13 +407,13 @@ private fun MonthGrid(
                     Box(
                         Modifier
                             .weight(1f)
-                            .height(40.dp)
-                            .padding(2.dp),
+                            .height(cellHeight)
+                            .padding(3.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         if (date != null) {
                             val status = CalendarColorLogic.statusForDay(date, tasks, messages = messages)
-                            Box(Modifier.size(36.dp)) {
+                            Box(Modifier.size(cellHeight - 6.dp)) {
                                 DayCell(date.dayOfMonth, status, date == selectedDate) { onSelect(date) }
                             }
                         }

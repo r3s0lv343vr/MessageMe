@@ -47,6 +47,7 @@ import com.unbound.messageme.domain.OnboardingValidation
 import com.unbound.messageme.domain.ProfileOnboarding
 import com.unbound.messageme.ui.components.WatercolorBackground
 import com.unbound.messageme.ui.theme.Ink
+import com.unbound.messageme.ui.theme.readableOutlinedTextFieldColors
 import com.unbound.messageme.widget.UnreadLetterPin
 import java.io.File
 
@@ -84,6 +85,7 @@ fun SettingsScreen(
     var lastError by remember { mutableStateOf<String?>(null) }
     var emailError by remember { mutableStateOf<String?>(null) }
     var profileSaved by remember { mutableStateOf(false) }
+    val fieldColors = readableOutlinedTextFieldColors()
 
     WatercolorBackground {
         Scaffold(
@@ -121,7 +123,8 @@ fun SettingsScreen(
                     label = { Text("First name") },
                     isError = firstError != null,
                     supportingText = firstError?.let { { Text(it) } },
-                    singleLine = true
+                    singleLine = true,
+                    colors = fieldColors
                 )
                 OutlinedTextField(
                     value = editLast,
@@ -130,7 +133,8 @@ fun SettingsScreen(
                     label = { Text("Last name") },
                     isError = lastError != null,
                     supportingText = lastError?.let { { Text(it) } },
-                    singleLine = true
+                    singleLine = true,
+                    colors = fieldColors
                 )
                 OutlinedTextField(
                     value = editEmail,
@@ -139,7 +143,8 @@ fun SettingsScreen(
                     label = { Text("Email") },
                     isError = emailError != null,
                     supportingText = emailError?.let { { Text(it) } },
-                    singleLine = true
+                    singleLine = true,
+                    colors = fieldColors
                 )
                 Button(onClick = {
                     val result = ProfileOnboarding.validate(editFirst, editLast, editEmail)
@@ -232,7 +237,8 @@ fun SettingsScreen(
                     value = importText,
                     onValueChange = { importText = it }, Modifier.fillMaxWidth(),
                     minLines = 4,
-                    placeholder = { Text("Paste JSON backup to restore") }
+                    placeholder = { Text("Paste JSON backup to restore") },
+                    colors = fieldColors
                 )
                 Button(
                     onClick = { onImportJson(importText); importText = "" },
